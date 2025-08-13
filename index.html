@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Squad - Mission Coopérative</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud">
+    <h3>🚁💧 DRONE SQUAD - MISSION COOP</h3>
+    <div id="timeRemaining">⏰ TEMPS: 05:00</div>
+    <div class="stat-item">
+        <span class="stat-label">🤖 Drones actifs:</span>
+        <span class="stat-value" id="activeDrones">1</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-label">🌱 Score:</span>
+        <span class="stat-value" id="score">0</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-label">🌿 Plantes:</span>
+        <span class="stat-value"><span id="plantsWatered">0</span>/<span id="totalPlants">0</span></span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-label">⚡ Efficacité:</span>
+        <span class="stat-value"><span id="efficiency">0</span>%</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-label">📊 État mission:</span>
+        <span class="stat-value" id="missionStatus">En attente</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-label">🏆 Record:</span>
+        <span class="stat-value" id="highScore">0</span>
+    </div>
+</div>
+
+<div id="radar">
+    <canvas id="radarCanvas" width="200" height="200"></canvas>
+</div>
+
+<div id="controls">
+    <div class="drone-selector">
+        <label>🤖 Nombre de drones:</label>
+        <input type="range" id="droneCount" min="1" max="10" value="3">
+        <span id="droneCountDisplay">3</span>
+    </div>
+    <button onclick="startNewGame()">🎮 Lancer Mission</button>
+    <button onclick="toggleCamera()">📷 Vue</button>
+    <button onclick="pauseGame()">⏸️ Pause</button>
+    <button onclick="toggleAIDebug()">🧠 Debug IA</button>
+</div>
+
+<div id="instructions">
+    <h4>📋 MISSION COOPÉRATIVE</h4>
+    <p>🤖 Les drones travaillent ensemble</p>
+    <p>🧠 IA avec pathfinding A*</p>
+    <p>💬 Communication inter-drones</p>
+    <p>📍 Attribution intelligente des cibles</p>
+    <p>🔄 Rechargement automatique</p>
+    <p style="margin-top: 10px; color: #00ff88;">Contrôles caméra:</p>
+    <p><span class="key">C</span> Changer vue</p>
+    <p><span class="key">Mouse</span> Rotation caméra</p>
+    <p style="margin-top: 15px; color: #ffaa00;">⏱️ 5 minutes pour tout arroser!</p>
+</div>
+
+<div id="aiStatus">
+    <h4>🧠 ÉTAT DES IA</h4>
+    <div id="aiStatusContent"></div>
+</div>
+
+<div id="gameOver">
+    <h2 id="gameOverTitle">⏰ MISSION TERMINÉE!</h2>
+    <p style="font-size: 20px; margin: 15px 0;">Score Final: <span id="finalScore" style="color: #ffff00;">0</span></p>
+    <p style="font-size: 18px;">Plantes Arrosées: <span id="finalPlants">0</span></p>
+    <p style="font-size: 18px;">Temps: <span id="finalTime">0:00</span></p>
+    <p style="font-size: 18px;">Efficacité: <span id="finalEfficiency">0%</span></p>
+    <p id="scoreComparison" style="font-size: 20px; margin: 15px 0;"></p>
+    <button onclick="startNewGame()">Nouvelle Mission 🔄</button>
+</div>
+
+<div id="crosshair"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="game4.js"></script>
+</body>
+</html>

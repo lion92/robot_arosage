@@ -1,18 +1,12 @@
 // ========================================
-// DRONE SQUAD - VERSION COOP + FAIR SHARE
+// DRONE SQUAD - VERSION COOP + FAIR SHARE + CITY
 // Chaque drone arrose au moins 1 plante et coopère
-// ========================================
-// ========================================
-// DRONE SQUAD — CITY GRAPHICS ADD-ON (.txt)
-// Copie/colle les blocs ci-dessous dans ton fichier JS.
-// Chaque section indique où AJOUTER ou REMPLACER.
+// Ajout: routes, buildings vitrées, lampadaires, eau réaliste, rendu ACES.
 // ========================================
 
-
-// ========================================
-// 1) AJOUTE ces constantes (au-dessus de // INITIALISATION THREE.JS)
-// ========================================
-/*
+// ----------------------------------------
+// CITY SETTINGS
+// ----------------------------------------
 const CITY = {
     RING_INNER: 220,         // rayon interne (autour du lac)
     RING_OUTER: 620,         // rayon externe
@@ -24,13 +18,145 @@ const CITY = {
     LAMP_HEIGHT: 22,
     BLOOM: { threshold: 0.8, strength: 0.9, radius: 0.35 }
 };
-*/
 
+// ----------------------------------------
+// Configuration globale
+// ----------------------------------------
+const CONFIG = {
+    WATERING_TIME: 1000,        // 1 seconde pour arroser
+    WATERING_DISTANCE: 50,      // Distance pour arroser
+    WATERING_HEIGHT: 40,        // Hauteur d'arrosage
+    DRONE_SPEED: 2.0,           // Vitesse de déplacement
+    WATER_PER_PLANT: 20,        // 20% du réservoir par plante
+    REFILL_SPEED: 10,           // Vitesse de recharge au lac
+    REBALANCE_EVERY_MS: 1500    // Fréquence d'équilibrage des tâches
+};
+
+// Variables globales
+let scene, camera, renderer;
+let aiDrones = [];
+let plants = [];
+let waterDrops = [];
+let particles = [];
+let lakeMesh;
+let sun, ambientLight;
+let gameRunning = false;
+let gamePaused = false;
+let startTime;
+let droneCount = 3;
+
+let stats = {
+    score: 0,
+    plantsWatered: 0,
+    totalPlants: 0,
+    highScore: parseInt(localStorage.getItem('droneHighScore') || 0)
+};
+
+const MAP_SIZE = 1500;
 
 // ========================================
-// 2) AJOUTE ces fonctions utilitaires (sous tes classes, avant init())
+// GESTIONNAIRE DE TÂCHES (COOPÉRATION)
 // ========================================
-/*
+const TaskManager = {
+    // Map<plantId, droneId>
+    claims: new Map(),
+    // Set<plantId> déjà attribuées une fois (pour l'équité)
+    everAssigned: new Set(),
+    // Dernier équilibrage
+    lastBalance: 0,
+
+    reset() {
+        this.claims.clear();
+        this.everAssigned.clear();
+        this.lastBalance = 0;
+    },
+
+    plantId(plant) { return plant._uid; },
+
+    isFree(plant) {
+        if (plant.watered) return false;
+        const id = this.plantId(plant);
+        return !this.claims.has(id);
+    },
+
+    claim(plant, drone) {
+        if (!plant || plant.watered) return false;
+        const id = this.plantId(plant);
+        if (this.claims.has(id)) return this.claims.get(id) === drone.id; // déjà à moi
+        this.claims.set(id, drone.id);
+        this.everAssigned.add(id);
+        plant.claimedBy = drone.id;
+        return true;
+    },
+
+    release(plant, drone) {
+        if (!plant) return;
+        const id = this.plantId(plant);
+        if (this.claims.get(id) === drone.id) {
+            this.claims.delete(id);
+        }
+        if (plant) plant.claimedBy = null;
+    },
+
+    // Retourne la meilleure plante libre pour ce drone
+    nextPlantFor(drone) {
+        // 1) Priorité : garantir qu'il arrose au moins une plante
+        //    -> on lui choisit une plante jamais assignée tant que possible
+        const candidates = plants.filter(p => !p.watered && (p.claimedBy == null));
+        if (candidates.length === 0) return null;
+
+        // On peut privilégier les plantes "jamais assignées" si drone n'a pas encore arrosé
+        const pool = (drone.plantsWatered === 0)
+            ? candidates.filter(p => !this.everAssigned.has(this.plantId(p)))
+            : candidates;
+        const list = (pool.length > 0) ? pool : candidates;
+
+        // Choisir la plus proche
+        let best = null; let bestDist = Infinity;
+        for (const p of list) {
+            const d = drone.position.distanceTo(p.position);
+            if (d < bestDist) { best = p; bestDist = d; }
+        }
+        return best;
+    },
+
+    // Équilibre les tâches pour éviter que 2 drones visent la même plante éloignée
+    balance() {
+        const now = Date.now();
+        if (now - this.lastBalance < CONFIG.REBALANCE_EVERY_MS) return;
+        this.lastBalance = now;
+
+        // Libérer les claims des plantes déjà arrosées
+        for (const p of plants) {
+            if (p.watered && p.claimedBy) {
+                const id = this.plantId(p);
+                this.claims.delete(id);
+                p.claimedBy = null;
+            }
+        }
+
+        // Si des drones n'ont pas de cible et qu'il reste des plantes libres, on leur assigne
+        for (const d of aiDrones) {
+            if (d.state === 'SEARCHING' && d.waterLevel >= 30) {
+                const target = this.nextPlantFor(d);
+                if (target && this.claim(target, d)) {
+                    d.target = target;
+                    d.state = 'MOVING';
+                    console.log(`🤝 Dispatch → Drone ${d.id} obtient ${target.type}`);
+                }
+            }
+        }
+    }
+};
+
+let _uidCounter = 1;
+function assignUID(obj) {
+    Object.defineProperty(obj, '_uid', { value: _uidCounter++, enumerable: false });
+}
+
+// ========================================
+// UTILS CITY (textures routes + immeubles + lampadaires)
+// ========================================
 function createRoadGridTexture(size, blockSize, roadWidth) {
     const cvs = document.createElement('canvas');
     cvs.width = cvs.height = 1024;
@@ -186,266 +312,6 @@ function populateCity() {
         createLamp(x, z);
     }
 }
-*/
-
-
-// ========================================
-// 3) DANS init(): Améliore le renderer et l’ombre
-// (AJOUTE après la création du renderer et de la lumière “sun”)
-// ========================================
-/*
-// Renderer tweaks
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-// Sun shadow frustum
-sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 1500;
-sun.shadow.camera.left = -600;
-sun.shadow.camera.right = 600;
-sun.shadow.camera.top = 600;
-sun.shadow.camera.bottom = -600;
-*/
-
-
-// ========================================
-// 4) SOL : REMPLACE ta création de ground par ceci
-// ========================================
-/*
-const groundTex = createRoadGridTexture(MAP_SIZE, CITY.BLOCK_SIZE, CITY.ROAD_WIDTH);
-groundTex.anisotropy = 8;
-groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
-
-const groundMat = new THREE.MeshStandardMaterial({
-    map: groundTex,
-    roughness: 0.95,
-    metalness: 0.0,
-    color: 0xffffff
-});
-
-const groundGeo = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE);
-const ground = new THREE.Mesh(groundGeo, groundMat);
-ground.rotation.x = -Math.PI/2;
-ground.receiveShadow = true;
-scene.add(ground);
-*/
-
-
-// ========================================
-// 5) LAC : REMPLACE le matériau + AJOUTE “ripple” dans animate()
-// ========================================
-/*
-// dans init(), remplace lakeMat
-const lakeMat = new THREE.MeshPhysicalMaterial({
-    color: 0x2c6ea8,
-    metalness: 0.1,
-    roughness: 0.2,
-    transmission: 0.6,
-    thickness: 2.0,
-    clearcoat: 1,
-    clearcoatRoughness: 0.1
-});
-
-// dans animate(), au tout début
-const t = performance.now() * 0.0015;
-if (lakeMesh && lakeMesh.material) {
-    lakeMesh.material.roughness = 0.18 + Math.sin(t) * 0.02;
-    lakeMesh.rotation.z = Math.sin(t * 0.33) * 0.002;
-}
-*/
-
-
-// ========================================
-// 6) VILLE : APPELLE populateCity() dans init() (après ciel + lac)
-// ========================================
-/*
-populateCity();
-*/
-
-
-// ========================================
-// 7) (Optionnel) BLOOM (si tu utilises three/examples/jsm/*)
-// ========================================
-/*
-// imports en haut du fichier
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass }     from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-
-// dans init(), après scene/camera/renderer
-window.composer = new EffectComposer(renderer);
-const renderPass = new RenderPass(scene, camera);
-const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    CITY.BLOOM.strength,
-    CITY.BLOOM.radius,
-    CITY.BLOOM.threshold
-);
-composer.addPass(renderPass);
-composer.addPass(bloomPass);
-
-// dans animate(), remplace le render final
-if (window.composer) composer.render(); else renderer.render(scene, camera);
-
-// dans resize
-if (window.composer) composer.setSize(window.innerWidth, window.innerHeight);
-*/
-
-
-// ========================================
-// 8) POLISH RAPIDE (optionnel)
-// ========================================
-/*
-// Ambiance & nuit
-ambientLight.intensity = 0.6;
-sun.intensity = 1.2;
-// Ciel & brume nocturnes
-// scene.fog = new THREE.FogExp2(0x0b1c2e, 0.0006);
-// skyMat.color.set(0x0b1c2e);
-
-// Plantes : activer les ombres sur leurs meshes quand c’est possible
-// ex: pot.castShadow = true; trunk.castShadow = true; foliage.castShadow = true;
-*/
-
-
-
-
-
-// Configuration globale
-const CONFIG = {
-    WATERING_TIME: 1000,        // 1 seconde pour arroser
-    WATERING_DISTANCE: 50,      // Distance pour arroser
-    WATERING_HEIGHT: 40,        // Hauteur d'arrosage
-    DRONE_SPEED: 2.0,           // Vitesse de déplacement
-    WATER_PER_PLANT: 20,        // 20% du réservoir par plante
-    REFILL_SPEED: 10,           // Vitesse de recharge au lac
-    REBALANCE_EVERY_MS: 1500    // Fréquence d'équilibrage des tâches
-};
-
-// Variables globales
-let scene, camera, renderer;
-let aiDrones = [];
-let plants = [];
-let waterDrops = [];
-let particles = [];
-let lakeMesh;
-let sun, ambientLight;
-let gameRunning = false;
-let gamePaused = false;
-let startTime;
-let droneCount = 3;
-
-let stats = {
-    score: 0,
-    plantsWatered: 0,
-    totalPlants: 0,
-    highScore: parseInt(localStorage.getItem('droneHighScore') || 0)
-};
-
-const MAP_SIZE = 1500;
-
-// ========================================
-// GESTIONNAIRE DE TÂCHES (COOPÉRATION)
-// ========================================
-const TaskManager = {
-    // Map<plantId, droneId>
-    claims: new Map(),
-    // Set<plantId> déjà attribuées une fois (pour l'équité)
-    everAssigned: new Set(),
-    // Dernier équilibrage
-    lastBalance: 0,
-
-    reset() {
-        this.claims.clear();
-        this.everAssigned.clear();
-        this.lastBalance = 0;
-    },
-
-    plantId(plant) { return plant._uid; },
-
-    isFree(plant) {
-        if (plant.watered) return false;
-        const id = this.plantId(plant);
-        return !this.claims.has(id);
-    },
-
-    claim(plant, drone) {
-        if (!plant || plant.watered) return false;
-        const id = this.plantId(plant);
-        if (this.claims.has(id)) return this.claims.get(id) === drone.id; // déjà à moi
-        this.claims.set(id, drone.id);
-        this.everAssigned.add(id);
-        plant.claimedBy = drone.id;
-        return true;
-    },
-
-    release(plant, drone) {
-        if (!plant) return;
-        const id = this.plantId(plant);
-        if (this.claims.get(id) === drone.id) {
-            this.claims.delete(id);
-        }
-        if (plant) plant.claimedBy = null;
-    },
-
-    // Retourne la meilleure plante libre pour ce drone
-    nextPlantFor(drone) {
-        // 1) Priorité : garantir qu'il arrose au moins une plante
-        //    -> on lui choisit une plante jamais assignée tant que possible
-        const candidates = plants.filter(p => !p.watered && (p.claimedBy == null));
-        if (candidates.length === 0) return null;
-
-        // On peut privilégier les plantes "jamais assignées" si drone n'a pas encore arrosé
-        const pool = (drone.plantsWatered === 0)
-            ? candidates.filter(p => !this.everAssigned.has(this.plantId(p)))
-            : candidates;
-        const list = (pool.length > 0) ? pool : candidates;
-
-        // Choisir la plus proche
-        let best = null; let bestDist = Infinity;
-        for (const p of list) {
-            const d = drone.position.distanceTo(p.position);
-            if (d < bestDist) { best = p; bestDist = d; }
-        }
-        return best;
-    },
-
-    // Équilibre les tâches pour éviter que 2 drones visent la même plante éloignée
-    balance() {
-        const now = Date.now();
-        if (now - this.lastBalance < CONFIG.REBALANCE_EVERY_MS) return;
-        this.lastBalance = now;
-
-        // Libérer les claims des plantes déjà arrosées
-        for (const p of plants) {
-            if (p.watered && p.claimedBy) {
-                const id = this.plantId(p);
-                this.claims.delete(id);
-                p.claimedBy = null;
-            }
-        }
-
-        // Si des drones n'ont pas de cible et qu'il reste des plantes libres, on leur assigne
-        for (const d of aiDrones) {
-            if (d.state === 'SEARCHING' && d.waterLevel >= 30) {
-                const target = this.nextPlantFor(d);
-                if (target && this.claim(target, d)) {
-                    d.target = target;
-                    d.state = 'MOVING';
-                    console.log(`🤝 Dispatch → Drone ${d.id} obtient ${target.type}`);
-                }
-            }
-        }
-    }
-};
-
-let _uidCounter = 1;
-function assignUID(obj) {
-    Object.defineProperty(obj, '_uid', { value: _uidCounter++, enumerable: false });
-}
 
 // ========================================
 // CLASSE PLANT SIMPLIFIÉE
@@ -523,6 +389,8 @@ class Plant {
 
         this.mesh = group;
         this.mesh.position.copy(this.position);
+        // activer ombres si possible
+        this.mesh.traverse(obj => { if (obj.isMesh) { obj.castShadow = true; obj.receiveShadow = true; } });
         scene.add(this.mesh);
     }
 
@@ -969,6 +837,12 @@ function init() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
 
+    // Rendu haut de gamme
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
     // Lumières
     ambientLight = new THREE.HemisphereLight(0x87ceeb, 0x545454, 0.8);
     scene.add(ambientLight);
@@ -976,19 +850,44 @@ function init() {
     sun = new THREE.DirectionalLight(0xffffff, 1.5);
     sun.position.set(200, 400, 200);
     sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 1500;
+    sun.shadow.camera.left = -600;
+    sun.shadow.camera.right = 600;
+    sun.shadow.camera.top = 600;
+    sun.shadow.camera.bottom = -600;
     scene.add(sun);
 
-    // Sol
+    // Sol (routes procédurales)
+    const groundTex = createRoadGridTexture(MAP_SIZE, CITY.BLOCK_SIZE, CITY.ROAD_WIDTH);
+    groundTex.anisotropy = 8;
+    groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
+
+    const groundMat = new THREE.MeshStandardMaterial({
+        map: groundTex,
+        roughness: 0.95,
+        metalness: 0.0,
+        color: 0xffffff
+    });
+
     const groundGeo = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE);
-    const groundMat = new THREE.MeshPhongMaterial({ color: 0x3a5f0b });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI/2;
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // Lac central
+    // Lac central (physique)
     const lakeGeo = new THREE.CircleGeometry(100, 32);
-    const lakeMat = new THREE.MeshPhongMaterial({ color: 0x006994, transparent: true, opacity: 0.8 });
+    const lakeMat = new THREE.MeshPhysicalMaterial({
+        color: 0x2c6ea8,
+        metalness: 0.1,
+        roughness: 0.2,
+        transmission: 0.6,
+        thickness: 2.0,
+        clearcoat: 1,
+        clearcoatRoughness: 0.1
+    });
     lakeMesh = new THREE.Mesh(lakeGeo, lakeMat);
     lakeMesh.rotation.x = -Math.PI/2;
     lakeMesh.position.y = 0.5;
@@ -999,6 +898,9 @@ function init() {
     const skyMat = new THREE.MeshBasicMaterial({ color: 0x87ceeb, side: THREE.BackSide });
     const sky = new THREE.Mesh(skyGeo, skyMat);
     scene.add(sky);
+
+    // Ville
+    populateCity();
 }
 
 // ========================================
@@ -1026,7 +928,7 @@ function generatePlants() {
             x = (Math.random() - 0.5) * (MAP_SIZE - 200);
             z = (Math.random() - 0.5) * (MAP_SIZE - 200);
 
-            // Éviter le lac
+            // Éviter le lac (rayon 150) et laisser de l'espace autour
             if (Math.sqrt(x*x + z*z) > 150) {
                 valid = true;
 
@@ -1227,6 +1129,13 @@ function showScorePopup(position, text) {
 // ========================================
 function animate() {
     requestAnimationFrame(animate);
+
+    // léger ripple du lac + mouvement
+    const t = performance.now() * 0.0015;
+    if (lakeMesh && lakeMesh.material) {
+        lakeMesh.material.roughness = 0.18 + Math.sin(t) * 0.02;
+        lakeMesh.rotation.z = Math.sin(t * 0.33) * 0.002;
+    }
 
     if (gameRunning && !gamePaused) {
         // Équilibrage coopératif périodique

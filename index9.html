@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriDrone - Simulation avec Vues Multiples</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #87CEEB, #98D8E8);
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #mainCanvas {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Panneau de vues multiples */
+        #viewsPanel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: grid;
+            grid-template-columns: repeat(2, 150px);
+            gap: 10px;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        #viewsPanel.expanded {
+            grid-template-columns: repeat(3, 200px);
+        }
+
+        #viewsPanel.minimized {
+            grid-template-columns: 100px;
+        }
+
+        .drone-view {
+            position: relative;
+            width: 100%;
+            height: 100px;
+            border: 2px solid #4CAF50;
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .drone-view:hover {
+            transform: scale(1.05);
+            border-color: #45a049;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .drone-view.active {
+            border-color: #FFC107;
+            border-width: 3px;
+            box-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
+        }
+
+        .drone-view.fullscreen {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80vw;
+            height: 80vh;
+            z-index: 1000;
+        }
+
+        .drone-view canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .drone-view-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        .drone-view-status {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .status-idle { background: #FFF; }
+        .status-moving { background: #FF5722; }
+        .status-watering { background: #2196F3; }
+        .status-refilling { background: #FFC107; }
+
+        /* Contrôles de caméra */
+        #cameraControls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            animation: slideInRight 0.5s ease-out;
+        }
+
+        .camera-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .camera-btn:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .camera-btn.active {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+        }
+
+        /* Vue principale avec modes */
+        #viewModeSelector {
+            position: fixed;
+            top: 20px;
+            left: 250px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 10px;
+            border-radius: 10px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .view-mode-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+        }
+
+        .view-mode-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .view-mode-btn.active {
+            background: #4CAF50;
+            border-color: #4CAF50;
+        }
+
+        /* Split screen mode */
+        .split-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 2px;
+            background: #000;
+            z-index: 500;
+        }
+
+        .split-screen.active {
+            display: grid;
+        }
+
+        .split-view {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .split-view canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .split-view-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        /* Panneau HUD amélioré */
+        #hud {
+            top: 20px;
+            left: 20px;
+            min-width: 220px;
+            animation: slideInLeft 0.5s ease-out;
+        }
+
+        /* Mode Cinématique */
+        .cinematic-bars {
+            position: fixed;
+            width: 100%;
+            background: black;
+            z-index: 200;
+            pointer-events: none;
+            transition: all 0.5s ease;
+        }
+
+        .cinematic-top {
+            top: 0;
+            height: 0;
+        }
+
+        .cinematic-bottom {
+            bottom: 0;
+            height: 0;
+        }
+
+        .cinematic-mode .cinematic-top,
+        .cinematic-mode .cinematic-bottom {
+            height: 10vh;
+        }
+
+        /* Indicateurs de drone */
+        .drone-indicator {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 150;
+        }
+
+        .drone-indicator-ring {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.5);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Panel de contrôles avancés */
+        #advancedControls {
+            position: fixed;
+            bottom: 150px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+            color: white;
+        }
+
+        #advancedControls.visible {
+            display: block;
+        }
+
+        .control-group {
+            margin: 10px 0;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #4CAF50;
+        }
+
+        .control-group select,
+        .control-group input {
+            width: 100%;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            color: white;
+        }
+
+        /* Mode FPV (First Person View) */
+        .fpv-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: none;
+            z-index: 180;
+        }
+
+        .fpv-mode .fpv-overlay {
+            display: block;
+        }
+
+        .fpv-hud {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid rgba(0, 255, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            color: #0f0;
+            font-size: 12px;
+        }
+
+        .fpv-crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+        }
+
+        .fpv-crosshair::before,
+        .fpv-crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(0, 255, 0, 0.8);
+        }
+
+        .fpv-crosshair::before {
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+        }
+
+        .fpv-crosshair::after {
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+        }
+
+        .panel {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+<!-- Canvas principal -->
+<canvas id="mainCanvas"></canvas>
+
+<!-- Panneau de vues des drones -->
+<div id="viewsPanel"></div>
+
+<!-- Sélecteur de mode de vue -->
+<div id="viewModeSelector">
+    <button class="view-mode-btn active" data-mode="orbit">🌍 Orbite</button>
+    <button class="view-mode-btn" data-mode="top">⬇️ Vue du dessus</button>
+    <button class="view-mode-btn" data-mode="follow">🚁 Suivre Drone</button>
+    <button class="view-mode-btn" data-mode="fpv">👁️ FPV</button>
+    <button class="view-mode-btn" data-mode="cinematic">🎬 Cinématique</button>
+    <button class="view-mode-btn" data-mode="split">⊞ Multi-vues</button>
+</div>
+
+<!-- Mode Split Screen -->
+<div class="split-screen" id="splitScreen">
+    <div class="split-view" id="split1">
+        <canvas id="splitCanvas1"></canvas>
+        <div class="split-view-label">Vue Principale</div>
+    </div>
+    <div class="split-view" id="split2">
+        <canvas id="splitCanvas2"></canvas>
+        <div class="split-view-label">Drone 1</div>
+    </div>
+    <div class="split-view" id="split3">
+        <canvas id="splitCanvas3"></canvas>
+        <div class="split-view-label">Drone 2</div>
+    </div>
+    <div class="split-view" id="split4">
+        <canvas id="splitCanvas4"></canvas>
+        <div class="split-view-label">Vue du dessus</div>
+    </div>
+</div>
+
+<!-- Barres cinématiques -->
+<div class="cinematic-bars">
+    <div class="cinematic-top"></div>
+    <div class="cinematic-bottom"></div>
+</div>
+
+<!-- Overlay FPV -->
+<div class="fpv-overlay">
+    <div class="fpv-hud">
+        <div>ALT: <span id="fpvAltitude">25m</span></div>
+        <div>SPD: <span id="fpvSpeed">2.5m/s</span></div>
+        <div>H2O: <span id="fpvWater">100%</span></div>
+        <div>BAT: <span id="fpvBattery">100%</span></div>
+    </div>
+    <div class="fpv-crosshair"></div>
+</div>
+
+<!-- HUD -->
+<div id="hud" class="panel">
+    <h2>🚁 AGRIDRONE</h2>
+    <div class="stat-line">
+        <span>Mode Vue:</span>
+        <span id="currentViewMode">Orbite</span>
+    </div>
+    <div class="stat-line">
+        <span>Drone Actif:</span>
+        <span id="activeDrone">-</span>
+    </div>
+    <div class="stat-line">
+        <span>Irrigation:</span>
+        <span><span id="plantsWatered">0</span>/<span id="totalPlants">0</span></span>
+    </div>
+    <div class="stat-line">
+        <span>Drones:</span>
+        <span id="droneCount">0</span>
+    </div>
+</div>
+
+<!-- Contrôles de caméra -->
+<div id="cameraControls">
+    <button class="camera-btn" onclick="toggleDroneViews()">👁️ Vues Drones</button>
+    <button class="camera-btn" onclick="toggleAdvancedControls()">⚙️ Contrôles</button>
+    <button class="camera-btn" onclick="resetCamera()">🔄 Réinitialiser</button>
+    <button class="camera-btn" onclick="captureScreenshot()">📸 Capture</button>
+</div>
+
+<!-- Contrôles avancés -->
+<div id="advancedControls">
+    <h3>Contrôles Avancés</h3>
+    <div class="control-group">
+        <label>Sélectionner Drone:</label>
+        <select id="droneSelector">
+            <option value="">Aucun</option>
+        </select>
+    </div>
+    <div class="control-group">
+        <label>Vitesse Camera:</label>
+        <input type="range" id="cameraSpeed" min="0.5" max="3" step="0.1" value="1">
+    </div>
+    <div class="control-group">
+        <label>FOV:</label>
+        <input type="range" id="cameraFOV" min="30" max="120" step="5" value="60">
+    </div>
+</div>
+
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+    // ========================================
+    // SYSTÈME DE VUES MULTIPLES POUR AGRIDRONE
+    // ========================================
+
+    // Variables globales
+    let scene, mainCamera, renderer;
+    let drones = [];
+    let plants = [];
+    let gameRunning = false;
+    let stats = {
+        plantsWatered: 0,
+        totalPlants: 0
+    };
+
+    // Système de caméras
+    let cameras = {
+        main: null,
+        drones: [],
+        top: null,
+        cinematic: null
+    };
+
+    let viewMode = 'orbit';
+    let selectedDrone = null;
+    let fpvDrone = null;
+
+    // Renderers pour les vues multiples
+    let droneRenderers = [];
+    let splitRenderers = [];
+
+    const CONFIG = {
+        FIELD_SIZE: 600,
+        DRONE_SPEED: 2.5,
+        WATER_TIME: 800,
+        WATER_DISTANCE: 30
+    };
+
+    // Classe CameraController améliorée
+    class CameraController {
+        constructor(camera) {
+            this.camera = camera;
+            this.target = new THREE.Vector3(0, 0, 0);
+            this.radius = 350;
+            this.theta = 0;
+            this.phi = Math.PI / 4;
+            this.speed = 1;
+            this.smoothness = 0.05;
+            this.mode = 'orbit';
+            this.followTarget = null;
+        }
+
+        setMode(mode) {
+            this.mode = mode;
+            switch(mode) {
+                case 'top':
+                    this.camera.position.set(0, 400, 0);
+                    this.camera.lookAt(0, 0, 0);
+                    break;
+                case 'orbit':
+                    this.theta = 0;
+                    this.phi = Math.PI / 4;
+                    break;
+                case 'cinematic':
+                    document.body.classList.add('cinematic-mode');
+                    break;
+                default:
+                    document.body.classList.remove('cinematic-mode');
+            }
+        }
+
+        followDrone(drone) {
+            this.followTarget = drone;
+            this.mode = 'follow';
+        }
+
+        update() {
+            switch(this.mode) {
+                case 'orbit':
+                    this.theta += 0.002 * this.speed;
+                    const x = this.radius * Math.sin(this.phi) * Math.cos(this.theta);
+                    const y = this.radius * Math.cos(this.phi);
+                    const z = this.radius * Math.sin(this.phi) * Math.sin(this.theta);
+
+                    this.camera.position.lerp(
+                        new THREE.Vector3(x, y, z),
+                        this.smoothness
+                    );
+                    this.camera.lookAt(this.target);
+                    break;
+
+                case 'follow':
+                    if (this.followTarget) {
+                        const offset = new THREE.Vector3(50, 50, 50);
+                        const desiredPosition = this.followTarget.position.clone().add(offset);
+                        this.camera.position.lerp(desiredPosition, this.smoothness * 2);
+                        this.camera.lookAt(this.followTarget.position);
+                    }
+                    break;
+
+                case 'fpv':
+                    if (fpvDrone) {
+                        this.camera.position.copy(fpvDrone.position);
+                        this.camera.position.y += 5;
+
+                        // Regarder dans la direction du mouvement
+                        if (fpvDrone.target) {
+                            this.camera.lookAt(fpvDrone.target.position);
+                        } else {
+                            const forward = new THREE.Vector3(0, -10, -20);
+                            this.camera.lookAt(fpvDrone.position.clone().add(forward));
+                        }
+
+                        // Mettre à jour l'HUD FPV
+                        document.getElementById('fpvAltitude').textContent = Math.round(fpvDrone.position.y) + 'm';
+                        document.getElementById('fpvSpeed').textContent = CONFIG.DRONE_SPEED + 'm/s';
+                        document.getElementById('fpvWater').textContent = Math.round(fpvDrone.waterLevel) + '%';
+                    }
+                    break;
+
+                case 'cinematic':
+                    // Mouvements cinématiques fluides
+                    const time = Date.now() * 0.0001;
+                    const cinematicRadius = 300 + Math.sin(time) * 100;
+                    const cinematicHeight = 100 + Math.sin(time * 2) * 50;
+
+                    this.camera.position.x = Math.cos(time) * cinematicRadius;
+                    this.camera.position.y = cinematicHeight;
+                    this.camera.position.z = Math.sin(time) * cinematicRadius;
+
+                    // Focus sur le drone le plus actif
+                    const activeDrone = drones.find(d => d.state === 'WATERING') || drones[0];
+                    if (activeDrone) {
+                        this.camera.lookAt(activeDrone.position);
+                    } else {
+                        this.camera.lookAt(0, 0, 0);
+                    }
+                    break;
+
+                case 'top':
+                    // Vue fixe du dessus
+                    this.camera.position.set(0, 400, 1);
+                    this.camera.lookAt(0, 0, 0);
+                    break;
+            }
+        }
+    }
+
+    // Classe Plant améliorée
+    class Plant {
+        constructor(x, z, id) {
+            this.id = id;
+            this.position = new THREE.Vector3(x, 0, z);
+            this.watered = false;
+            this.mesh = null;
+            this.createMesh();
+        }
+
+        createMesh() {
+            const geometry = new THREE.ConeGeometry(5, 15, 4);
+            const material = new THREE.MeshPhongMaterial({
+                color: 0xFFEB3B,
+                flatShading: true
+            });
+            this.mesh = new THREE.Mesh(geometry, material);
+            this.mesh.position.copy(this.position);
+            this.mesh.position.y = 7.5;
+            this.mesh.castShadow = true;
+            scene.add(this.mesh);
+        }
+
+        water() {
+            if (!this.watered) {
+                this.watered = true;
+                this.mesh.material.color.setHex(0x4CAF50);
+                stats.plantsWatered++;
+                updateHUD();
+            }
+        }
+    }
+
+    // Classe Drone améliorée avec caméra
+    class Drone {
+        constructor(id, startPos, color) {
+            this.id = id;
+            this.position = startPos.clone();
+            this.waterLevel = 100;
+            this.target = null;
+            this.state = 'IDLE';
+            this.mesh = null;
+            this.color = color;
+            this.camera = null;
+            this.light = null;
+            this.createMesh();
+            this.createCamera();
+        }
+
+        createCamera() {
+            // Caméra embarquée pour chaque drone
+            this.camera = new THREE.PerspectiveCamera(
+                90, // FOV plus large pour vue drone
+                150 / 100, // Aspect ratio des mini-vues
+                0.1,
+                500
+            );
+            this.camera.position.copy(this.position);
+        }
+
+        createMesh() {
+            const group = new THREE.Group();
+
+            // Corps principal
+            const bodyGeometry = new THREE.BoxGeometry(12, 6, 12);
+            const bodyMaterial = new THREE.MeshPhongMaterial({
+                color: this.color,
+                metalness: 0.3
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.castShadow = true;
+            group.add(body);
+
+            // Lumière embarquée
+            this.light = new THREE.PointLight(this.color, 0.5, 50);
+            this.light.position.y = -5;
+            group.add(this.light);
+
+            // Caméra visuelle (pour montrer l'orientation)
+            const cameraGeometry = new THREE.BoxGeometry(3, 2, 4);
+            const cameraMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const cameraBox = new THREE.Mesh(cameraGeometry, cameraMaterial);
+            cameraBox.position.z = -8;
+            group.add(cameraBox);
+
+            // Hélices
+            this.rotors = [];
+            for (let i = 0; i < 4; i++) {
+                const angle = (i / 4) * Math.PI * 2;
+                const rotor = new THREE.Mesh(
+                    new THREE.BoxGeometry(10, 0.5, 2),
+                    new THREE.MeshBasicMaterial({ color: 0x333333 })
+                );
+                rotor.position.x = Math.cos(angle) * 10;
+                rotor.position.z = Math.sin(angle) * 10;
+                rotor.position.y = 4;
+                this.rotors.push(rotor);
+                group.add(rotor);
+            }
+
+            this.mesh = group;
+            this.mesh.position.copy(this.position);
+            scene.add(this.mesh);
+        }
+
+        updateCamera() {
+            if (this.camera) {
+                // Position de la caméra légèrement derrière et au-dessus du drone
+                this.camera.position.copy(this.position);
+                this.camera.position.y += 10;
+
+                // Orienter la caméra vers l'avant du drone
+                if (this.target) {
+                    const lookAtPos = this.target.position.clone();
+                    lookAtPos.y = 0;
+                    this.camera.lookAt(lookAtPos);
+                } else {
+                    const forward = new THREE.Vector3(
+                        Math.sin(this.mesh.rotation.y) * 50,
+                        -20,
+                        Math.cos(this.mesh.rotation.y) * 50
+                    );
+                    this.camera.lookAt(this.position.clone().add(forward));
+                }
+            }
+        }
+
+        update() {
+            // Logique de déplacement existante
+            switch(this.state) {
+                case 'IDLE':
+                    this.target = plants.find(p => !p.watered);
+                    if (this.waterLevel < 20) {
+                        this.state = 'REFILLING';
+                    } else if (this.target) {
+                        this.state = 'MOVING';
+                    }
+                    break;
+
+                case 'MOVING':
+                    if (this.target) {
+                        const targetPos = new THREE.Vector3(
+                            this.target.position.x,
+                            25,
+                            this.target.position.z
+                        );
+                        const direction = new THREE.Vector3()
+                            .subVectors(targetPos, this.position)
+                            .normalize();
+
+                        this.position.add(direction.multiplyScalar(CONFIG.DRONE_SPEED));
+
+                        if (this.position.distanceTo(targetPos) < CONFIG.WATER_DISTANCE) {
+                            this.state = 'WATERING';
+                            this.target.water();
+                            this.waterLevel -= 20;
+
+                            setTimeout(() => {
+                                this.state = 'IDLE';
+                                this.target = null;
+                            }, CONFIG.WATER_TIME);
+                        }
+                    }
+                    break;
+
+                case 'REFILLING':
+                    const stationPos = new THREE.Vector3(0, 25, 0);
+                    const direction = new THREE.Vector3()
+                        .subVectors(stationPos, this.position)
+                        .normalize();
+
+                    this.position.add(direction.multiplyScalar(CONFIG.DRONE_SPEED * 1.5));
+
+                    if (this.position.distanceTo(stationPos) < 40) {
+                        this.waterLevel = Math.min(100, this.waterLevel + 5);
+                        if (this.waterLevel >= 100) {
+                            this.state = 'IDLE';
+                        }
+                    }
+                    break;
+            }
+
+            // Mettre à jour le mesh et la caméra
+            if (this.mesh) {
+                this.mesh.position.copy(this.position);
+                this.rotors.forEach(rotor => {
+                    rotor.rotation.y += 0.5;
+                });
+
+                // Orientation du drone
+                if (this.state === 'MOVING' && this.target) {
+                    const angle = Math.atan2(
+                        this.target.position.z - this.position.z,
+                        this.target.position.x - this.position.x
+                    );
+                    this.mesh.rotation.y = angle;
+                }
+            }
+
+            // Mettre à jour la caméra du drone
+            this.updateCamera();
+
+            // Clignotement de la lumière selon l'état
+            if (this.light) {
+                this.light.intensity = this.state === 'WATERING' ? 1.0 : 0.5;
+            }
+        }
+    }
+
+    // Initialisation Three.js avec vues multiples
+    function init() {
+        // Scene
+        scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x87CEEB, 100, 1000);
+
+        // Caméra principale
+        mainCamera = new THREE.PerspectiveCamera(
+            60,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            2000
+        );
+        mainCamera.position.set(0, 150, 300);
+
+        // Renderer principal
+        renderer = new THREE.WebGLRenderer({
+            canvas: document.getElementById('mainCanvas'),
+            antialias: true
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+
+        // Contrôleur de caméra
+        cameraController = new CameraController(mainCamera);
+
+        // Lumières
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(100, 200, 100);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+
+        // Sol
+        const groundGeometry = new THREE.PlaneGeometry(CONFIG.FIELD_SIZE, CONFIG.FIELD_SIZE);
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x8B7355 });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Station centrale
+        const stationGeometry = new THREE.CylinderGeometry(25, 30, 10, 8);
+        const stationMaterial = new THREE.MeshPhongMaterial({ color: 0x2196F3 });
+        const station = new THREE.Mesh(stationGeometry, stationMaterial);
+        station.position.y = 5;
+        station.castShadow = true;
+        scene.add(station);
+
+        // Générer le champ et les drones
+        generateField();
+        createDrones();
+        initializeDroneViews();
+    }
+
+    // Initialiser les vues des drones
+    function initializeDroneViews() {
+        const viewsPanel = document.getElementById('viewsPanel');
+        viewsPanel.innerHTML = '';
+        droneRenderers = [];
+
+        drones.forEach((drone, index) => {
+            // Créer le conteneur de vue
+            const viewDiv = document.createElement('div');
+            viewDiv.className = 'drone-view';
+            viewDiv.id = `drone-view-${index}`;
+            viewDiv.onclick = () => selectDroneView(index);
+
+            // Label
+            const label = document.createElement('div');
+            label.className = 'drone-view-label';
+            label.textContent = `Drone ${index + 1}`;
+            viewDiv.appendChild(label);
+
+            // Indicateur de statut
+            const status = document.createElement('div');
+            status.className = 'drone-view-status status-idle';
+            status.id = `drone-status-${index}`;
+            viewDiv.appendChild(status);
+
+            // Canvas pour le rendu
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 200;
+            viewDiv.appendChild(canvas);
+
+            // Renderer pour ce drone
+            const droneRenderer = new THREE.WebGLRenderer({
+                canvas: canvas,
+                antialias: false
+            });
+            droneRenderer.setSize(300, 200);
+            droneRenderers.push(droneRenderer);
+
+            viewsPanel.appendChild(viewDiv);
+        });
+
+        // Mettre à jour le sélecteur de drones
+        const selector = document.getElementById('droneSelector');
+        selector.innerHTML = '<option value="">Aucun</option>';
+        drones.forEach((drone, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = `Drone ${index + 1}`;
+            selector.appendChild(option);
+        });
+    }
+
+    // Sélectionner une vue de drone
+    function selectDroneView(index) {
+        // Désactiver toutes les vues
+        document.querySelectorAll('.drone-view').forEach(view => {
+            view.classList.remove('active');
+        });
+
+        // Activer la vue sélectionnée
+        document.getElementById(`drone-view-${index}`).classList.add('active');
+
+        selectedDrone = drones[index];
+        fpvDrone = selectedDrone;
+
+        document.getElementById('activeDrone').textContent = `Drone ${index + 1}`;
+        document.getElementById('droneSelector').value = index;
+
+        // Si on est en mode follow ou FPV, suivre ce drone
+        if (viewMode === 'follow' || viewMode === 'fpv') {
+            cameraController.followDrone(selectedDrone);
+        }
+    }
+
+    // Génération du champ
+    function generateField() {
+        plants = [];
+        const rows = 8;
+        const spacing = CONFIG.FIELD_SIZE / (rows + 1);
+
+        for (let i = 0; i < rows; i++) {
+            for (let j = 0; j < rows; j++) {
+                const x = (j - rows / 2) * spacing * 0.8;
+                const z = (i - rows / 2) * spacing * 0.8;
+
+                if (Math.abs(x) < 50 && Math.abs(z) < 50) continue;
+
+                plants.push(new Plant(x, z, plants.length));
+            }
+        }
+
+        stats.totalPlants = plants.length;
+        updateHUD();
+    }
+
+    // Création des drones
+    function createDrones() {
+        drones = [];
+        const colors = [0xFF5722, 0x2196F3, 0x4CAF50, 0xFFC107];
+        const count = 4;
+
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            const startPos = new THREE.Vector3(
+                Math.cos(angle) * 60,
+                30,
+                Math.sin(angle) * 60
+            );
+
+            drones.push(new Drone(i + 1, startPos, colors[i]));
+        }
+
+        document.getElementById('droneCount').textContent = count;
+    }
+
+    // Changer le mode de vue
+    function changeViewMode(mode) {
+        viewMode = mode;
+        document.getElementById('currentViewMode').textContent =
+            mode.charAt(0).toUpperCase() + mode.slice(1);
+
+        // Retirer toutes les classes de mode
+        document.body.classList.remove('cinematic-mode', 'fpv-mode');
+        document.getElementById('splitScreen').classList.remove('active');
+
+        // Mettre à jour les boutons
+        document.querySelectorAll('.view-mode-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+
+        // Appliquer le nouveau mode
+        switch(mode) {
+            case 'fpv':
+                document.body.classList.add('fpv-mode');
+                if (!fpvDrone && drones.length > 0) {
+                    fpvDrone = drones[0];
+                }
+                break;
+            case 'split':
+                document.getElementById('splitScreen').classList.add('active');
+                initializeSplitScreen();
+                break;
+        }
+
+        cameraController.setMode(mode);
+    }
+
+    // Initialiser l'écran divisé
+    function initializeSplitScreen() {
+        if (splitRenderers.length === 0) {
+            for (let i = 1; i <= 4; i++) {
+                const canvas = document.getElementById(`splitCanvas${i}`);
+                const renderer = new THREE.WebGLRenderer({
+                    canvas: canvas,
+                    antialias: true
+                });
+                renderer.setSize(window.innerWidth / 2, window.innerHeight / 2);
+                splitRenderers.push(renderer);
+            }
+        }
+    }
+
+    // Basculer l'affichage des vues drones
+    function toggleDroneViews() {
+        const panel = document.getElementById('viewsPanel');
+        panel.style.display = panel.style.display === 'none' ? 'grid' : 'none';
+    }
+
+    // Basculer les contrôles avancés
+    function toggleAdvancedControls() {
+        const controls = document.getElementById('advancedControls');
+        controls.classList.toggle('visible');
+    }
+
+    // Réinitialiser la caméra
+    function resetCamera() {
+        cameraController.theta = 0;
+        cameraController.phi = Math.PI / 4;
+        cameraController.radius = 350;
+        mainCamera.position.set(0, 150, 300);
+        mainCamera.lookAt(0, 0, 0);
+    }
+
+    // Capture d'écran
+    function captureScreenshot() {
+        const link = document.createElement('a');
+        link.download = `agridrone-${Date.now()}.png`;
+        link.href = renderer.domElement.toDataURL();
+        link.click();
+    }
+
+    // Mise à jour de l'interface
+    function updateHUD() {
+        document.getElementById('plantsWatered').textContent = stats.plantsWatered;
+        document.getElementById('totalPlants').textContent = stats.totalPlants;
+
+        // Mettre à jour les statuts des drones
+        drones.forEach((drone, index) => {
+            const statusElement = document.getElementById(`drone-status-${index}`);
+            if (statusElement) {
+                statusElement.className = `drone-view-status status-${drone.state.toLowerCase()}`;
+            }
+        });
+    }
+
+    // Boucle d'animation
+    function animate() {
+        requestAnimationFrame(animate);
+
+        // Mettre à jour les drones
+        drones.forEach(drone => drone.update());
+
+        // Mettre à jour le contrôleur de caméra
+        cameraController.update();
+
+        // Rendu principal
+        renderer.render(scene, mainCamera);
+
+        // Rendu des vues drones
+        droneRenderers.forEach((droneRenderer, index) => {
+            if (drones[index] && drones[index].camera) {
+                droneRenderer.render(scene, drones[index].camera);
+            }
+        });
+
+        // Rendu split screen si actif
+        if (viewMode === 'split' && splitRenderers.length > 0) {
+            // Vue principale
+            splitRenderers[0].render(scene, mainCamera);
+
+            // Vues drones
+            if (drones[0]) splitRenderers[1].render(scene, drones[0].camera);
+            if (drones[1]) splitRenderers[2].render(scene, drones[1].camera);
+
+            // Vue du dessus
+            const topCamera = new THREE.OrthographicCamera(
+                -300, 300, 300, -300, 1, 1000
+            );
+            topCamera.position.set(0, 400, 0);
+            topCamera.lookAt(0, 0, 0);
+            splitRenderers[3].render(scene, topCamera);
+        }
+
+        updateHUD();
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', () => {
+        init();
+        animate();
+
+        // Sélecteurs de mode de vue
+        document.querySelectorAll('.view-mode-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                changeViewMode(e.target.dataset.mode);
+            });
+        });
+
+        // Sélecteur de drone
+        document.getElementById('droneSelector').addEventListener('change', (e) => {
+            if (e.target.value) {
+                selectDroneView(parseInt(e.target.value));
+            }
+        });
+
+        // Contrôles de vitesse de caméra
+        document.getElementById('cameraSpeed').addEventListener('input', (e) => {
+            cameraController.speed = parseFloat(e.target.value);
+        });
+
+        // Contrôle FOV
+        document.getElementById('cameraFOV').addEventListener('input', (e) => {
+            mainCamera.fov = parseFloat(e.target.value);
+            mainCamera.updateProjectionMatrix();
+        });
+
+        // Touches clavier
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                    const droneIndex = parseInt(e.key) - 1;
+                    if (drones[droneIndex]) {
+                        selectDroneView(droneIndex);
+                        changeViewMode('follow');
+                    }
+                    break;
+                case 'v':
+                    // Cycle through view modes
+                    const modes = ['orbit', 'top', 'follow', 'fpv', 'cinematic', 'split'];
+                    const currentIndex = modes.indexOf(viewMode);
+                    const nextIndex = (currentIndex + 1) % modes.length;
+                    changeViewMode(modes[nextIndex]);
+                    break;
+                case 'r':
+                    resetCamera();
+                    break;
+                case 'p':
+                    captureScreenshot();
+                    break;
+            }
+        });
+
+        // Resize
+        window.addEventListener('resize', () => {
+            mainCamera.aspect = window.innerWidth / window.innerHeight;
+            mainCamera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            if (viewMode === 'split') {
+                splitRenderers.forEach(r => {
+                    r.setSize(window.innerWidth / 2, window.innerHeight / 2);
+                });
+            }
+        });
+
+        // Démarrer automatiquement
+        gameRunning = true;
+
+        console.log('✅ AgriDrone Multi-View Ready!');
+        console.log('📌 Touches: 1-4 = Sélectionner drone | V = Changer vue | R = Reset | P = Screenshot');
+    });
+</script>
+</body>
+</html>

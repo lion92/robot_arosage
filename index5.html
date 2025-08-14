@@ -950,7 +950,7 @@
         doc.setFontSize(11);
         doc.setFont(undefined, 'normal');
 
-        const waterCost = (data.waterUsed * 0.002).toFixed(2);
+        const waterCost = (data.waterUsed * 0.00378).toFixed(2);
         const energyCost = ((data.duration.minutes + data.duration.seconds/60) * 0.05 * data.drones.length).toFixed(2);
         const totalCost = (parseFloat(waterCost) + parseFloat(energyCost)).toFixed(2);
         const costPerHa = (parseFloat(totalCost) / parseFloat(data.irrigatedArea)).toFixed(2);

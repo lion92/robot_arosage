@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TacticalDrone - Mission Urbaine Coopérative</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #1a1a2e, #16213e);
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #mainCanvas {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Panneau de vues multiples */
+        #viewsPanel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: grid;
+            grid-template-columns: repeat(2, 150px);
+            gap: 10px;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .drone-view {
+            position: relative;
+            width: 100%;
+            height: 100px;
+            border: 2px solid #ff5722;
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(255, 87, 34, 0.3);
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .drone-view:hover {
+            transform: scale(1.05);
+            border-color: #ff9800;
+            box-shadow: 0 6px 12px rgba(255, 152, 0, 0.4);
+        }
+
+        .drone-view.active {
+            border-color: #f44336;
+            border-width: 3px;
+            box-shadow: 0 0 20px rgba(244, 67, 54, 0.6);
+        }
+
+        .drone-view canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .drone-view-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: rgba(244, 67, 54, 0.9);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        .drone-view-status {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: pulse 1s infinite;
+        }
+
+        .status-idle { background: #4CAF50; }
+        .status-searching { background: #FFC107; }
+        .status-targeting { background: #FF5722; }
+        .status-attacking { background: #f44336; animation: blink 0.2s infinite; }
+        .status-returning { background: #2196F3; }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* HUD Tactique */
+        #hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 87, 34, 0.5);
+            min-width: 250px;
+            box-shadow: 0 0 20px rgba(255, 87, 34, 0.3);
+        }
+
+        #hud h2 {
+            color: #ff5722;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-line {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 14px;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+        }
+
+        .stat-line span:last-child {
+            color: #ff9800;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff5722, #f44336);
+            transition: width 0.3s ease;
+        }
+
+        /* Panneau de mission */
+        #missionPanel {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(244, 67, 54, 0.1);
+            border: 2px solid #f44336;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            animation: slideDown 0.5s ease-out;
+        }
+
+        #missionPanel h3 {
+            color: #ff5722;
+            margin-bottom: 5px;
+        }
+
+        .alert {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(244, 67, 54, 0.95);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            display: none;
+            z-index: 1000;
+            animation: alertPulse 0.5s ease-out;
+        }
+
+        @keyframes alertPulse {
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        /* Contrôles tactiques */
+        #tacticalControls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 87, 34, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .tactical-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #ff5722, #f44336);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+
+        .tactical-btn:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 4px 8px rgba(244, 67, 54, 0.4);
+        }
+
+        .tactical-btn:active {
+            transform: scale(0.95);
+        }
+
+        .tactical-btn.danger {
+            background: linear-gradient(135deg, #d32f2f, #b71c1c);
+        }
+
+        /* Mode de vue */
+        #viewModeSelector {
+            position: fixed;
+            top: 20px;
+            left: 300px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px;
+            border-radius: 10px;
+            display: flex;
+            gap: 10px;
+            border: 1px solid rgba(255, 87, 34, 0.3);
+        }
+
+        .view-mode-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+        }
+
+        .view-mode-btn:hover {
+            background: rgba(255, 87, 34, 0.3);
+        }
+
+        .view-mode-btn.active {
+            background: #ff5722;
+            border-color: #ff5722;
+        }
+
+        /* Indicateurs de cible */
+        .target-indicator {
+            position: fixed;
+            pointer-events: none;
+            z-index: 500;
+            border: 2px solid #f44336;
+            border-radius: 50%;
+            animation: targetPulse 1s infinite;
+        }
+
+        @keyframes targetPulse {
+            0%, 100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.5);
+                opacity: 0.3;
+            }
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateX(-50%) translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .damage-indicator {
+            position: fixed;
+            color: #ff5722;
+            font-weight: bold;
+            font-size: 20px;
+            pointer-events: none;
+            z-index: 600;
+            animation: damageFloat 1s ease-out forwards;
+        }
+
+        @keyframes damageFloat {
+            0% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="mainCanvas"></canvas>
+
+<!-- Panneau de vues des drones -->
+<div id="viewsPanel"></div>
+
+<!-- HUD Tactique -->
+<div id="hud">
+    <h2>🚁 TACTICAL OPS</h2>
+    <div class="stat-line">
+        <span>Mission:</span>
+        <span id="missionStatus">EN COURS</span>
+    </div>
+    <div class="stat-line">
+        <span>Cibles détruites:</span>
+        <span><span id="targetsDestroyed">0</span>/<span id="totalTargets">0</span></span>
+    </div>
+    <div class="stat-line">
+        <span>Drones actifs:</span>
+        <span id="activeDrones">4</span>
+    </div>
+    <div class="stat-line">
+        <span>Munitions moyennes:</span>
+        <span id="avgAmmo">100%</span>
+    </div>
+    <div class="stat-line">
+        <span>Temps mission:</span>
+        <span id="missionTime">00:00</span>
+    </div>
+    <div class="progress-bar">
+        <div class="progress-fill" id="missionProgress" style="width: 0%"></div>
+    </div>
+</div>
+
+<!-- Panneau de mission -->
+<div id="missionPanel">
+    <h3>OBJECTIF PRINCIPAL</h3>
+    <div>Neutraliser toutes les structures hostiles</div>
+</div>
+
+<!-- Sélecteur de mode de vue -->
+<div id="viewModeSelector">
+    <button class="view-mode-btn active" data-mode="tactical">🎯 Tactique</button>
+    <button class="view-mode-btn" data-mode="orbit">🌍 Orbite</button>
+    <button class="view-mode-btn" data-mode="top">⬇️ Satellite</button>
+    <button class="view-mode-btn" data-mode="follow">🚁 Poursuite</button>
+    <button class="view-mode-btn" data-mode="fpv">👁️ FPV</button>
+</div>
+
+<!-- Contrôles tactiques -->
+<div id="tacticalControls">
+    <button class="tactical-btn" onclick="setFormation('diamond')">◆ Formation Diamant</button>
+    <button class="tactical-btn" onclick="setFormation('line')">━ Formation Ligne</button>
+    <button class="tactical-btn" onclick="setFormation('circle')">○ Formation Cercle</button>
+    <button class="tactical-btn danger" onclick="executeCoordinatedStrike()">⚡ Frappe Coordonnée</button>
+    <button class="tactical-btn" onclick="returnToBase()">🏠 Retour Base</button>
+</div>
+
+<!-- Alerte -->
+<div class="alert" id="alertMessage"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+    // ==========================================
+    // SYSTÈME DE DRONES TACTIQUES URBAINS
+    // ==========================================
+
+    let scene, mainCamera, renderer;
+    let drones = [];
+    let buildings = [];
+    let explosions = [];
+    let gameRunning = false;
+    let missionStartTime = Date.now();
+    let viewMode = 'tactical';
+    let selectedDrone = null;
+    let droneRenderers = [];
+    let formation = 'free';
+
+    const CONFIG = {
+        CITY_SIZE: 800,
+        DRONE_SPEED: 3.5,
+        ATTACK_RANGE: 100,
+        MISSILE_SPEED: 8,
+        DAMAGE_PER_HIT: 25,
+        RELOAD_TIME: 2000,
+        COORDINATION_BONUS: 1.5
+    };
+
+    // Classe Building (Cible)
+    class Building {
+        constructor(x, z, width, height, depth) {
+            this.position = new THREE.Vector3(x, height/2, z);
+            this.dimensions = { width, height, depth };
+            this.health = 100;
+            this.maxHealth = 100;
+            this.destroyed = false;
+            this.targeted = false;
+            this.targetedBy = [];
+            this.mesh = null;
+            this.healthBar = null;
+            this.createMesh();
+        }
+
+        createMesh() {
+            const geometry = new THREE.BoxGeometry(this.dimensions.width, this.dimensions.height, this.dimensions.depth);
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x555555,
+                emissive: 0x111111,
+                emissiveIntensity: 0.2
+            });
+
+            this.mesh = new THREE.Mesh(geometry, material);
+            this.mesh.position.copy(this.position);
+            this.mesh.castShadow = true;
+            this.mesh.receiveShadow = true;
+
+            // Ajouter des fenêtres émissives
+            this.addWindows();
+
+            scene.add(this.mesh);
+        }
+
+        addWindows() {
+            const windowGeometry = new THREE.PlaneGeometry(3, 4);
+            const windowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffeb3b,
+                emissive: 0xffeb3b,
+                emissiveIntensity: 0.8
+            });
+
+            const windowsPerFloor = 4;
+            const floors = Math.floor(this.dimensions.height / 15);
+
+            for (let floor = 0; floor < floors; floor++) {
+                for (let i = 0; i < windowsPerFloor; i++) {
+                    if (Math.random() > 0.3) { // 70% de fenêtres allumées
+                        const window = new THREE.Mesh(windowGeometry, windowMaterial);
+                        const angle = (i / windowsPerFloor) * Math.PI * 2;
+
+                        window.position.x = Math.cos(angle) * (this.dimensions.width/2 + 0.1);
+                        window.position.y = -this.dimensions.height/2 + 10 + floor * 15;
+                        window.position.z = Math.sin(angle) * (this.dimensions.depth/2 + 0.1);
+                        window.rotation.y = angle;
+
+                        this.mesh.add(window);
+                    }
+                }
+            }
+        }
+
+        takeDamage(damage, attacker) {
+            if (this.destroyed) return;
+
+            this.health = Math.max(0, this.health - damage);
+
+            // Effet visuel de dégât
+            this.mesh.material.color.setHex(0xff0000);
+            setTimeout(() => {
+                if (!this.destroyed) {
+                    this.mesh.material.color.setHex(0x555555);
+                }
+            }, 200);
+
+            // Afficher les dégâts
+            this.showDamage(damage);
+
+            if (this.health <= 0) {
+                this.destroy();
+            } else {
+                // Mise à jour visuelle selon les dégâts
+                const healthRatio = this.health / this.maxHealth;
+                this.mesh.material.emissiveIntensity = 0.2 + (1 - healthRatio) * 0.5;
+                this.mesh.material.emissive.setHex(0xff5500);
+            }
+        }
+
+        showDamage(damage) {
+            const indicator = document.createElement('div');
+            indicator.className = 'damage-indicator';
+            indicator.textContent = `-${damage}`;
+
+            const screenPos = this.getScreenPosition();
+            indicator.style.left = screenPos.x + 'px';
+            indicator.style.top = screenPos.y + 'px';
+
+            document.body.appendChild(indicator);
+            setTimeout(() => indicator.remove(), 1000);
+        }
+
+        getScreenPosition() {
+            const vector = this.position.clone();
+            vector.project(mainCamera);
+
+            return {
+                x: (vector.x + 1) / 2 * window.innerWidth,
+                y: -(vector.y - 1) / 2 * window.innerHeight
+            };
+        }
+
+        destroy() {
+            this.destroyed = true;
+            this.targetedBy = [];
+
+            // Explosion
+            createExplosion(this.position);
+
+            // Animation d'effondrement
+            const collapseAnimation = setInterval(() => {
+                this.mesh.position.y -= 2;
+                this.mesh.rotation.x += 0.02;
+                this.mesh.rotation.z += 0.01;
+                this.mesh.scale.y *= 0.95;
+
+                if (this.mesh.position.y < -this.dimensions.height) {
+                    clearInterval(collapseAnimation);
+                    scene.remove(this.mesh);
+                }
+            }, 30);
+
+            updateStats();
+
+            // Vérifier la victoire
+            checkVictory();
+        }
+    }
+
+    // Classe Drone Tactique
+    class Drone {
+        constructor(id, startPos, color) {
+            this.id = id;
+            this.position = startPos.clone();
+            this.velocity = new THREE.Vector3();
+            this.target = null;
+            this.state = 'IDLE';
+            this.ammo = 100;
+            this.maxAmmo = 100;
+            this.lastFireTime = 0;
+            this.mesh = null;
+            this.color = color;
+            this.camera = null;
+            this.missiles = [];
+            this.formationPosition = null;
+            this.createMesh();
+            this.createCamera();
+        }
+
+        createCamera() {
+            this.camera = new THREE.PerspectiveCamera(90, 150/100, 0.1, 1000);
+            this.camera.position.copy(this.position);
+        }
+
+        createMesh() {
+            const group = new THREE.Group();
+
+            // Corps principal
+            const bodyGeometry = new THREE.BoxGeometry(8, 4, 8);
+            const bodyMaterial = new THREE.MeshPhongMaterial({
+                color: this.color,
+                metalness: 0.5,
+                roughness: 0.3
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.castShadow = true;
+            group.add(body);
+
+            // Armes
+            const weaponGeometry = new THREE.CylinderGeometry(1, 1, 6);
+            const weaponMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+
+            for (let i = 0; i < 2; i++) {
+                const weapon = new THREE.Mesh(weaponGeometry, weaponMaterial);
+                weapon.position.x = i === 0 ? -5 : 5;
+                weapon.position.y = -2;
+                weapon.rotation.z = Math.PI / 2;
+                group.add(weapon);
+            }
+
+            // Lumière de statut
+            this.statusLight = new THREE.PointLight(this.color, 1, 30);
+            this.statusLight.position.y = 5;
+            group.add(this.statusLight);
+
+            // Hélices
+            this.rotors = [];
+            for (let i = 0; i < 4; i++) {
+                const angle = (i / 4) * Math.PI * 2;
+                const rotor = new THREE.Mesh(
+                    new THREE.BoxGeometry(12, 0.5, 2),
+                    new THREE.MeshBasicMaterial({ color: 0x222222 })
+                );
+                rotor.position.x = Math.cos(angle) * 8;
+                rotor.position.z = Math.sin(angle) * 8;
+                rotor.position.y = 3;
+                this.rotors.push(rotor);
+                group.add(rotor);
+            }
+
+            this.mesh = group;
+            this.mesh.position.copy(this.position);
+            scene.add(this.mesh);
+        }
+
+        update() {
+            // IA de combat
+            switch(this.state) {
+                case 'IDLE':
+                    this.searchTarget();
+                    break;
+
+                case 'SEARCHING':
+                    this.patrol();
+                    this.searchTarget();
+                    break;
+
+                case 'TARGETING':
+                    this.approachTarget();
+                    break;
+
+                case 'ATTACKING':
+                    this.attack();
+                    break;
+
+                case 'RETURNING':
+                    this.returnToBase();
+                    break;
+            }
+
+            // Appliquer la formation si définie
+            if (formation !== 'free' && this.formationPosition) {
+                this.moveToFormation();
+            }
+
+            // Mise à jour physique
+            this.position.add(this.velocity);
+            this.velocity.multiplyScalar(0.95); // Friction
+
+            // Limites de la zone
+            this.position.x = Math.max(-CONFIG.CITY_SIZE/2, Math.min(CONFIG.CITY_SIZE/2, this.position.x));
+            this.position.z = Math.max(-CONFIG.CITY_SIZE/2, Math.min(CONFIG.CITY_SIZE/2, this.position.z));
+            this.position.y = Math.max(40, Math.min(150, this.position.y));
+
+            // Mise à jour visuelle
+            if (this.mesh) {
+                this.mesh.position.copy(this.position);
+
+                // Rotation des hélices
+                this.rotors.forEach(rotor => {
+                    rotor.rotation.y += 0.8;
+                });
+
+                // Orientation vers la cible
+                if (this.target && !this.target.destroyed) {
+                    const direction = new THREE.Vector3()
+                        .subVectors(this.target.position, this.position)
+                        .normalize();
+                    this.mesh.lookAt(this.target.position);
+                }
+
+                // Clignotement de la lumière selon l'état
+                this.statusLight.intensity = this.state === 'ATTACKING' ? 2 : 1;
+
+                if (this.state === 'ATTACKING') {
+                    this.statusLight.color.setHex(0xff0000);
+                } else {
+                    this.statusLight.color.setHex(this.color);
+                }
+            }
+
+            // Mise à jour de la caméra
+            this.updateCamera();
+
+            // Mise à jour des missiles
+            this.updateMissiles();
+        }
+
+        searchTarget() {
+            // Recherche coopérative : éviter les cibles déjà très ciblées
+            const availableTargets = buildings.filter(b =>
+                !b.destroyed && b.targetedBy.length < 2
+            );
+
+            if (availableTargets.length > 0) {
+                // Choisir la cible la plus proche
+                let closestTarget = null;
+                let minDistance = Infinity;
+
+                availableTargets.forEach(building => {
+                    const distance = this.position.distanceTo(building.position);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestTarget = building;
+                    }
+                });
+
+                if (closestTarget) {
+                    this.target = closestTarget;
+                    this.target.targetedBy.push(this);
+                    this.state = 'TARGETING';
+                }
+            } else {
+                this.state = 'SEARCHING';
+            }
+        }
+
+        patrol() {
+            // Patrouille aléatoire
+            if (Math.random() < 0.02) {
+                this.velocity.x += (Math.random() - 0.5) * 2;
+                this.velocity.z += (Math.random() - 0.5) * 2;
+            }
+        }
+
+        approachTarget() {
+            if (!this.target || this.target.destroyed) {
+                this.state = 'IDLE';
+                return;
+            }
+
+            const distance = this.position.distanceTo(this.target.position);
+
+            if (distance < CONFIG.ATTACK_RANGE) {
+                this.state = 'ATTACKING';
+            } else {
+                // Se déplacer vers la cible
+                const direction = new THREE.Vector3()
+                    .subVectors(this.target.position, this.position)
+                    .normalize();
+
+                this.velocity.add(direction.multiplyScalar(0.5));
+
+                // Altitude optimale pour l'attaque
+                const optimalHeight = this.target.dimensions.height + 30;
+                if (this.position.y < optimalHeight) {
+                    this.velocity.y += 0.3;
+                } else if (this.position.y > optimalHeight + 20) {
+                    this.velocity.y -= 0.2;
+                }
+            }
+        }
+
+        attack() {
+            if (!this.target || this.target.destroyed) {
+                this.state = 'IDLE';
+                this.target = null;
+                return;
+            }
+
+            const now = Date.now();
+            if (now - this.lastFireTime > CONFIG.RELOAD_TIME && this.ammo > 0) {
+                this.fire();
+                this.lastFireTime = now;
+                this.ammo -= 10;
+
+                if (this.ammo <= 0) {
+                    this.state = 'RETURNING';
+                }
+            }
+
+            // Mouvement circulaire autour de la cible
+            const angle = Date.now() * 0.001 + this.id;
+            const radius = CONFIG.ATTACK_RANGE * 0.8;
+
+            const targetX = this.target.position.x + Math.cos(angle) * radius;
+            const targetZ = this.target.position.z + Math.sin(angle) * radius;
+
+            this.velocity.x += (targetX - this.position.x) * 0.02;
+            this.velocity.z += (targetZ - this.position.z) * 0.02;
+        }
+
+        fire() {
+            // Créer un missile
+            const missile = {
+                position: this.position.clone(),
+                target: this.target,
+                speed: CONFIG.MISSILE_SPEED,
+                mesh: this.createMissile()
+            };
+
+            this.missiles.push(missile);
+
+            // Effet de tir
+            const flash = new THREE.PointLight(0xffff00, 5, 50);
+            flash.position.copy(this.position);
+            scene.add(flash);
+
+            setTimeout(() => scene.remove(flash), 100);
+        }
+
+        createMissile() {
+            const geometry = new THREE.CylinderGeometry(0.5, 0.3, 4);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0xff0000,
+                emissive: 0xff0000,
+                emissiveIntensity: 1
+            });
+            const missile = new THREE.Mesh(geometry, material);
+            missile.position.copy(this.position);
+            scene.add(missile);
+            return missile;
+        }
+
+        updateMissiles() {
+            this.missiles = this.missiles.filter(missile => {
+                if (!missile.target || missile.target.destroyed) {
+                    scene.remove(missile.mesh);
+                    return false;
+                }
+
+                // Déplacer le missile vers la cible
+                const direction = new THREE.Vector3()
+                    .subVectors(missile.target.position, missile.position)
+                    .normalize();
+
+                missile.position.add(direction.multiplyScalar(missile.speed));
+                missile.mesh.position.copy(missile.position);
+                missile.mesh.lookAt(missile.target.position);
+                missile.mesh.rotateX(Math.PI / 2);
+
+                // Vérifier l'impact
+                if (missile.position.distanceTo(missile.target.position) < 10) {
+                    // Calcul des dégâts avec bonus de coordination
+                    let damage = CONFIG.DAMAGE_PER_HIT;
+                    if (missile.target.targetedBy.length > 1) {
+                        damage *= CONFIG.COORDINATION_BONUS;
+                    }
+
+                    missile.target.takeDamage(damage, this);
+                    scene.remove(missile.mesh);
+
+                    // Petit effet d'explosion
+                    const flash = new THREE.PointLight(0xff5500, 10, 100);
+                    flash.position.copy(missile.position);
+                    scene.add(flash);
+                    setTimeout(() => scene.remove(flash), 200);
+
+                    return false;
+                }
+
+                return true;
+            });
+        }
+
+        returnToBase() {
+            const basePos = new THREE.Vector3(0, 50, 0);
+            const distance = this.position.distanceTo(basePos);
+
+            if (distance < 50) {
+                // Recharger
+                this.ammo = Math.min(this.maxAmmo, this.ammo + 2);
+
+                if (this.ammo >= this.maxAmmo) {
+                    this.state = 'IDLE';
+                }
+            } else {
+                const direction = new THREE.Vector3()
+                    .subVectors(basePos, this.position)
+                    .normalize();
+                this.velocity.add(direction.multiplyScalar(0.8));
+            }
+        }
+
+        moveToFormation() {
+            if (!this.formationPosition) return;
+
+            const distance = this.position.distanceTo(this.formationPosition);
+            if (distance > 10) {
+                const direction = new THREE.Vector3()
+                    .subVectors(this.formationPosition, this.position)
+                    .normalize();
+                this.velocity.add(direction.multiplyScalar(0.3));
+            }
+        }
+
+        updateCamera() {
+            if (this.camera) {
+                this.camera.position.copy(this.position);
+                this.camera.position.y += 10;
+
+                if (this.target && !this.target.destroyed) {
+                    this.camera.lookAt(this.target.position);
+                } else {
+                    const forward = new THREE.Vector3(
+                        Math.sin(this.mesh.rotation.y) * 50,
+                        -20,
+                        Math.cos(this.mesh.rotation.y) * 50
+                    );
+                    this.camera.lookAt(this.position.clone().add(forward));
+                }
+            }
+        }
+    }
+
+    // Classe CameraController
+    class CameraController {
+        constructor(camera) {
+            this.camera = camera;
+            this.mode = 'tactical';
+            this.target = new THREE.Vector3(0, 0, 0);
+            this.radius = 400;
+            this.theta = Math.PI / 4;
+            this.phi = Math.PI / 3;
+            this.followTarget = null;
+        }
+
+        setMode(mode) {
+            this.mode = mode;
+            document.getElementById('missionPanel').style.display =
+                mode === 'tactical' ? 'block' : 'none';
+        }
+
+        update() {
+            switch(this.mode) {
+                case 'tactical':
+                    // Vue tactique isométrique
+                    this.camera.position.set(300, 300, 300);
+                    this.camera.lookAt(0, 0, 0);
+                    break;
+
+                case 'orbit':
+                    this.theta += 0.002;
+                    const x = this.radius * Math.sin(this.phi) * Math.cos(this.theta);
+                    const y = this.radius * Math.cos(this.phi);
+                    const z = this.radius * Math.sin(this.phi) * Math.sin(this.theta);
+                    this.camera.position.set(x, y, z);
+                    this.camera.lookAt(this.target);
+                    break;
+
+                case 'top':
+                    this.camera.position.set(0, 500, 1);
+                    this.camera.lookAt(0, 0, 0);
+                    break;
+
+                case 'follow':
+                    if (this.followTarget && !this.followTarget.destroyed) {
+                        const offset = new THREE.Vector3(80, 80, 80);
+                        this.camera.position.lerp(
+                            this.followTarget.position.clone().add(offset),
+                            0.05
+                        );
+                        this.camera.lookAt(this.followTarget.position);
+                    }
+                    break;
+
+                case 'fpv':
+                    if (selectedDrone) {
+                        this.camera.position.copy(selectedDrone.position);
+                        this.camera.position.y += 5;
+
+                        if (selectedDrone.target) {
+                            this.camera.lookAt(selectedDrone.target.position);
+                        }
+                    }
+                    break;
+            }
+        }
+    }
+
+    // Initialisation Three.js
+    function init() {
+        // Scene
+        scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x0a0a0a, 200, 1500);
+
+        // Caméra
+        mainCamera = new THREE.PerspectiveCamera(
+            60,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            2000
+        );
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({
+            canvas: document.getElementById('mainCanvas'),
+            antialias: true
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // Contrôleur de caméra
+        cameraController = new CameraController(mainCamera);
+
+        // Lumières
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+        scene.add(ambientLight);
+
+        // Lumière directionnelle (lune)
+        const moonLight = new THREE.DirectionalLight(0x6666ff, 0.5);
+        moonLight.position.set(200, 400, 200);
+        moonLight.castShadow = true;
+        moonLight.shadow.camera.left = -500;
+        moonLight.shadow.camera.right = 500;
+        moonLight.shadow.camera.top = 500;
+        moonLight.shadow.camera.bottom = -500;
+        scene.add(moonLight);
+
+        // Sol urbain
+        const groundGeometry = new THREE.PlaneGeometry(CONFIG.CITY_SIZE, CONFIG.CITY_SIZE);
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Grille de rues
+        createStreets();
+
+        // Base
+        createBase();
+
+        // Générer la ville
+        generateCity();
+
+        // Créer les drones
+        createDrones();
+
+        // Initialiser les vues
+        initializeDroneViews();
+
+        gameRunning = true;
+    }
+
+    // Créer les rues
+    function createStreets() {
+        const streetMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const streetWidth = 20;
+        const blockSize = 100;
+
+        for (let i = -4; i <= 4; i++) {
+            // Rues horizontales
+            const hStreet = new THREE.Mesh(
+                new THREE.PlaneGeometry(CONFIG.CITY_SIZE, streetWidth),
+                streetMaterial
+            );
+            hStreet.rotation.x = -Math.PI / 2;
+            hStreet.position.z = i * blockSize;
+            hStreet.position.y = 0.1;
+            scene.add(hStreet);
+
+            // Rues verticales
+            const vStreet = new THREE.Mesh(
+                new THREE.PlaneGeometry(streetWidth, CONFIG.CITY_SIZE),
+                streetMaterial
+            );
+            vStreet.rotation.x = -Math.PI / 2;
+            vStreet.position.x = i * blockSize;
+            vStreet.position.y = 0.1;
+            scene.add(vStreet);
+        }
+    }
+
+    // Créer la base
+    function createBase() {
+        const baseGeometry = new THREE.CylinderGeometry(40, 45, 15, 8);
+        const baseMaterial = new THREE.MeshPhongMaterial({
+            color: 0x2196F3,
+            emissive: 0x1565C0,
+            emissiveIntensity: 0.3
+        });
+        const base = new THREE.Mesh(baseGeometry, baseMaterial);
+        base.position.y = 7.5;
+        base.castShadow = true;
+        scene.add(base);
+
+        // Hélipad
+        const helipadGeometry = new THREE.RingGeometry(15, 20, 8);
+        const helipadMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffeb3b,
+            side: THREE.DoubleSide
+        });
+        const helipad = new THREE.Mesh(helipadGeometry, helipadMaterial);
+        helipad.rotation.x = -Math.PI / 2;
+        helipad.position.y = 15.1;
+        scene.add(helipad);
+
+        // Lumière de base
+        const baseLight = new THREE.PointLight(0x2196F3, 2, 100);
+        baseLight.position.y = 30;
+        scene.add(baseLight);
+    }
+
+    // Générer la ville
+    function generateCity() {
+        buildings = [];
+        const blockSize = 100;
+        const buildingCount = 20;
+
+        for (let i = 0; i < buildingCount; i++) {
+            let x, z;
+
+            // Éviter le centre (base)
+            do {
+                x = (Math.random() - 0.5) * CONFIG.CITY_SIZE * 0.8;
+                z = (Math.random() - 0.5) * CONFIG.CITY_SIZE * 0.8;
+            } while (Math.abs(x) < 80 && Math.abs(z) < 80);
+
+            // Aligner sur la grille
+            x = Math.round(x / blockSize) * blockSize + (Math.random() - 0.5) * 30;
+            z = Math.round(z / blockSize) * blockSize + (Math.random() - 0.5) * 30;
+
+            const width = 30 + Math.random() * 20;
+            const height = 50 + Math.random() * 100;
+            const depth = 30 + Math.random() * 20;
+
+            buildings.push(new Building(x, z, width, height, depth));
+        }
+
+        updateStats();
+    }
+
+    // Créer les drones
+    function createDrones() {
+        drones = [];
+        const colors = [0xFF5722, 0xE91E63, 0x9C27B0, 0x673AB7];
+        const count = 4;
+
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            const startPos = new THREE.Vector3(
+                Math.cos(angle) * 60,
+                50,
+                Math.sin(angle) * 60
+            );
+
+            drones.push(new Drone(i + 1, startPos, colors[i]));
+        }
+    }
+
+    // Initialiser les vues des drones
+    function initializeDroneViews() {
+        const viewsPanel = document.getElementById('viewsPanel');
+        viewsPanel.innerHTML = '';
+        droneRenderers = [];
+
+        drones.forEach((drone, index) => {
+            const viewDiv = document.createElement('div');
+            viewDiv.className = 'drone-view';
+            viewDiv.id = `drone-view-${index}`;
+            viewDiv.onclick = () => selectDroneView(index);
+
+            const label = document.createElement('div');
+            label.className = 'drone-view-label';
+            label.textContent = `UNIT-${index + 1}`;
+            viewDiv.appendChild(label);
+
+            const status = document.createElement('div');
+            status.className = 'drone-view-status status-idle';
+            status.id = `drone-status-${index}`;
+            viewDiv.appendChild(status);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 200;
+            viewDiv.appendChild(canvas);
+
+            const droneRenderer = new THREE.WebGLRenderer({
+                canvas: canvas,
+                antialias: false
+            });
+            droneRenderer.setSize(300, 200);
+            droneRenderers.push(droneRenderer);
+
+            viewsPanel.appendChild(viewDiv);
+        });
+    }
+
+    // Sélectionner une vue de drone
+    function selectDroneView(index) {
+        document.querySelectorAll('.drone-view').forEach(view => {
+            view.classList.remove('active');
+        });
+
+        document.getElementById(`drone-view-${index}`).classList.add('active');
+        selectedDrone = drones[index];
+
+        if (viewMode === 'follow' || viewMode === 'fpv') {
+            cameraController.followTarget = selectedDrone;
+        }
+    }
+
+    // Créer une explosion
+    function createExplosion(position) {
+        const particleCount = 50;
+        const particles = [];
+
+        for (let i = 0; i < particleCount; i++) {
+            const geometry = new THREE.SphereGeometry(Math.random() * 3 + 1);
+            const material = new THREE.MeshBasicMaterial({
+                color: Math.random() > 0.5 ? 0xff5500 : 0xffaa00,
+                emissive: 0xff5500,
+                emissiveIntensity: 1
+            });
+
+            const particle = new THREE.Mesh(geometry, material);
+            particle.position.copy(position);
+
+            particle.velocity = new THREE.Vector3(
+                (Math.random() - 0.5) * 10,
+                Math.random() * 15,
+                (Math.random() - 0.5) * 10
+            );
+
+            scene.add(particle);
+            particles.push(particle);
+        }
+
+        // Onde de choc
+        const shockwave = new THREE.Mesh(
+            new THREE.RingGeometry(1, 2, 32),
+            new THREE.MeshBasicMaterial({
+                color: 0xff5500,
+                transparent: true,
+                opacity: 0.8,
+                side: THREE.DoubleSide
+            })
+        );
+        shockwave.position.copy(position);
+        shockwave.rotation.x = -Math.PI / 2;
+        scene.add(shockwave);
+
+        // Animation
+        const animateExplosion = () => {
+            particles.forEach(particle => {
+                particle.position.add(particle.velocity);
+                particle.velocity.y -= 0.5;
+                particle.material.opacity = (particle.material.opacity || 1) - 0.02;
+
+                if (particle.material.opacity <= 0) {
+                    scene.remove(particle);
+                }
+            });
+
+            shockwave.scale.x += 0.5;
+            shockwave.scale.y += 0.5;
+            shockwave.material.opacity -= 0.02;
+
+            if (shockwave.material.opacity > 0) {
+                requestAnimationFrame(animateExplosion);
+            } else {
+                scene.remove(shockwave);
+            }
+        };
+
+        animateExplosion();
+
+        // Son et effet
+        showAlert("CIBLE NEUTRALISÉE!");
+    }
+
+    // Formations
+    function setFormation(type) {
+        formation = type;
+        const center = new THREE.Vector3(0, 80, 0);
+
+        switch(type) {
+            case 'diamond':
+                drones.forEach((drone, i) => {
+                    const positions = [
+                        new THREE.Vector3(0, 80, -50),
+                        new THREE.Vector3(-50, 80, 0),
+                        new THREE.Vector3(50, 80, 0),
+                        new THREE.Vector3(0, 80, 50)
+                    ];
+                    drone.formationPosition = positions[i] || center;
+                });
+                break;
+
+            case 'line':
+                drones.forEach((drone, i) => {
+                    drone.formationPosition = new THREE.Vector3(
+                        -75 + i * 50,
+                        80,
+                        0
+                    );
+                });
+                break;
+
+            case 'circle':
+                drones.forEach((drone, i) => {
+                    const angle = (i / drones.length) * Math.PI * 2;
+                    drone.formationPosition = new THREE.Vector3(
+                        Math.cos(angle) * 70,
+                        80,
+                        Math.sin(angle) * 70
+                    );
+                });
+                break;
+
+            case 'free':
+                drones.forEach(drone => {
+                    drone.formationPosition = null;
+                });
+                break;
+        }
+
+        showAlert(`Formation ${type.toUpperCase()} activée`);
+    }
+
+    // Frappe coordonnée
+    function executeCoordinatedStrike() {
+        const activeTargets = buildings.filter(b => !b.destroyed);
+
+        if (activeTargets.length === 0) {
+            showAlert("Aucune cible disponible");
+            return;
+        }
+
+        // Assigner une cible à chaque drone
+        drones.forEach((drone, index) => {
+            const targetIndex = index % activeTargets.length;
+            drone.target = activeTargets[targetIndex];
+            drone.state = 'TARGETING';
+            activeTargets[targetIndex].targetedBy.push(drone);
+        });
+
+        formation = 'free';
+        showAlert("FRAPPE COORDONNÉE LANCÉE!");
+    }
+
+    // Retour à la base
+    function returnToBase() {
+        drones.forEach(drone => {
+            drone.state = 'RETURNING';
+            drone.target = null;
+        });
+        formation = 'free';
+        showAlert("Retour à la base ordonné");
+    }
+
+    // Afficher une alerte
+    function showAlert(message) {
+        const alert = document.getElementById('alertMessage');
+        alert.textContent = message;
+        alert.style.display = 'block';
+
+        setTimeout(() => {
+            alert.style.display = 'none';
+        }, 2000);
+    }
+
+    // Mise à jour des statistiques
+    function updateStats() {
+        const destroyed = buildings.filter(b => b.destroyed).length;
+        const total = buildings.length;
+
+        document.getElementById('targetsDestroyed').textContent = destroyed;
+        document.getElementById('totalTargets').textContent = total;
+
+        const progress = (destroyed / total) * 100;
+        document.getElementById('missionProgress').style.width = progress + '%';
+
+        // Munitions moyennes
+        const avgAmmo = drones.reduce((sum, d) => sum + d.ammo, 0) / drones.length;
+        document.getElementById('avgAmmo').textContent = Math.round(avgAmmo) + '%';
+
+        // Temps de mission
+        const elapsed = Date.now() - missionStartTime;
+        const minutes = Math.floor(elapsed / 60000);
+        const seconds = Math.floor((elapsed % 60000) / 1000);
+        document.getElementById('missionTime').textContent =
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        // Statuts des drones
+        drones.forEach((drone, index) => {
+            const statusElement = document.getElementById(`drone-status-${index}`);
+            if (statusElement) {
+                statusElement.className = `drone-view-status status-${drone.state.toLowerCase()}`;
+            }
+        });
+    }
+
+    // Vérifier la victoire
+    function checkVictory() {
+        const destroyed = buildings.filter(b => b.destroyed).length;
+        const total = buildings.length;
+
+        if (destroyed === total) {
+            document.getElementById('missionStatus').textContent = 'ACCOMPLIE';
+            document.getElementById('missionStatus').style.color = '#4CAF50';
+            showAlert("MISSION ACCOMPLIE!");
+
+            // Faire rentrer tous les drones
+            setTimeout(() => returnToBase(), 2000);
+        }
+    }
+
+    // Boucle d'animation
+    function animate() {
+        requestAnimationFrame(animate);
+
+        if (gameRunning) {
+            // Mise à jour des drones
+            drones.forEach(drone => drone.update());
+
+            // Mise à jour de la caméra
+            cameraController.update();
+
+            // Rendu principal
+            renderer.render(scene, mainCamera);
+
+            // Rendu des vues drones
+            droneRenderers.forEach((droneRenderer, index) => {
+                if (drones[index] && drones[index].camera) {
+                    droneRenderer.render(scene, drones[index].camera);
+                }
+            });
+
+            updateStats();
+        }
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', () => {
+        init();
+        animate();
+
+        // Sélecteurs de mode de vue
+        document.querySelectorAll('.view-mode-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.view-mode-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                cameraController.setMode(e.target.dataset.mode);
+                viewMode = e.target.dataset.mode;
+            });
+        });
+
+        // Touches clavier
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                    const droneIndex = parseInt(e.key) - 1;
+                    if (drones[droneIndex]) {
+                        selectDroneView(droneIndex);
+                    }
+                    break;
+                case 'f':
+                    setFormation('diamond');
+                    break;
+                case 'g':
+                    setFormation('line');
+                    break;
+                case 'h':
+                    setFormation('circle');
+                    break;
+                case 'space':
+                    executeCoordinatedStrike();
+                    break;
+                case 'r':
+                    returnToBase();
+                    break;
+            }
+        });
+
+        // Resize
+        window.addEventListener('resize', () => {
+            mainCamera.aspect = window.innerWidth / window.innerHeight;
+            mainCamera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        console.log('🚁 Système Tactique Opérationnel');
+        console.log('📌 Touches: 1-4 = Drones | F/G/H = Formations | ESPACE = Frappe | R = Base');
+    });
+</script>
+
+<script src="gameRapport.js"></script>
+<script src="./enhanced.js"></script>
+
+
+</body>
+</html>

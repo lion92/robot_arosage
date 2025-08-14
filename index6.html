@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriDrone - L'Innovation au Service de l'Agriculture</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-green: #4CAF50;
+            --primary-blue: #2196F3;
+            --dark-bg: #0a0a0a;
+            --light-text: #ffffff;
+            --gray-text: #b0b0b0;
+            --accent-yellow: #FFEB3B;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--dark-bg);
+            color: var(--light-text);
+            overflow-x: hidden;
+        }
+
+        /* Loader */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--dark-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            animation: fadeOut 0.5s ease-out 2s forwards;
+        }
+
+        .loader-drone {
+            width: 60px;
+            height: 60px;
+            border: 3px solid rgba(76, 175, 80, 0.3);
+            border-top-color: var(--primary-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                pointer-events: none;
+            }
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 20px 50px;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            animation: slideDown 0.5s ease-out 2.5s both;
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--primary-green), var(--primary-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--gray-text);
+            text-decoration: none;
+            transition: color 0.3s;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-green);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--primary-green);
+            transition: width 0.3s;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: radial-gradient(circle at 20% 50%, rgba(76, 175, 80, 0.2), transparent 50%),
+            radial-gradient(circle at 80% 50%, rgba(33, 150, 243, 0.2), transparent 50%);
+        }
+
+        .hero-content {
+            text-align: center;
+            max-width: 900px;
+            padding: 0 20px;
+            animation: fadeInUp 1s ease-out 2.8s both;
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 8vw, 5rem);
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--primary-green), var(--primary-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+
+        .hero .subtitle {
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
+            color: var(--gray-text);
+            margin-bottom: 40px;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 16px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-green), #45a049);
+            color: white;
+            box-shadow: 0 10px 30px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--primary-blue);
+            border: 2px solid var(--primary-blue);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary-blue);
+            color: white;
+            transform: translateY(-3px);
+        }
+
+        /* Animated Background */
+        .animated-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .drone-icon {
+            position: absolute;
+            font-size: 30px;
+            opacity: 0.1;
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateX(-100px) translateY(100vh) rotate(0deg);
+            }
+            100% {
+                transform: translateX(calc(100vw + 100px)) translateY(-100px) rotate(360deg);
+            }
+        }
+
+        /* Features Section */
+        .features {
+            padding: 100px 50px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: clamp(2rem, 5vw, 3rem);
+            margin-bottom: 60px;
+            color: var(--light-text);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(33, 150, 243, 0.1));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-align: center;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+            rgba(76, 175, 80, 0.2), transparent 50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--primary-green);
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: var(--primary-green);
+        }
+
+        .feature-card p {
+            color: var(--gray-text);
+            line-height: 1.6;
+        }
+
+        /* Stats Section */
+        .stats {
+            padding: 80px 50px;
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.05), rgba(33, 150, 243, 0.05));
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 48px;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--primary-green), var(--primary-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            color: var(--gray-text);
+            margin-top: 10px;
+        }
+
+        /* Technology Section */
+        .technology {
+            padding: 100px 50px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .tech-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        .tech-visual {
+            position: relative;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .orbit {
+            position: absolute;
+            border: 2px dashed rgba(76, 175, 80, 0.3);
+            border-radius: 50%;
+            animation: rotate 20s linear infinite;
+        }
+
+        .orbit-1 {
+            width: 300px;
+            height: 300px;
+        }
+
+        .orbit-2 {
+            width: 200px;
+            height: 200px;
+            animation-duration: 15s;
+            animation-direction: reverse;
+        }
+
+        .orbit-3 {
+            width: 100px;
+            height: 100px;
+            animation-duration: 10s;
+        }
+
+        .tech-center {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-green), var(--primary-blue));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            z-index: 10;
+            box-shadow: 0 0 30px rgba(76, 175, 80, 0.5);
+        }
+
+        .tech-point {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: var(--primary-green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--primary-green);
+        }
+
+        .tech-info h3 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: var(--light-text);
+        }
+
+        .tech-info p {
+            color: var(--gray-text);
+            line-height: 1.8;
+            margin-bottom: 30px;
+        }
+
+        .tech-list {
+            list-style: none;
+        }
+
+        .tech-list li {
+            padding: 10px 0;
+            color: var(--gray-text);
+            display: flex;
+            align-items: center;
+        }
+
+        .tech-list li::before {
+            content: '✓';
+            color: var(--primary-green);
+            font-weight: bold;
+            margin-right: 15px;
+            font-size: 20px;
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 50px;
+            background: rgba(10, 10, 10, 0.95);
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .social-links a {
+            color: var(--gray-text);
+            font-size: 24px;
+            transition: color 0.3s, transform 0.3s;
+        }
+
+        .social-links a:hover {
+            color: var(--primary-green);
+            transform: translateY(-3px);
+        }
+
+        /* Animations */
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            nav {
+                padding: 15px 20px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .tech-content {
+                grid-template-columns: 1fr;
+            }
+
+            .tech-visual {
+                height: 300px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Scroll animations */
+        .scroll-fade {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease-out;
+        }
+
+        .scroll-fade.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+<!-- Loader -->
+<div class="loader">
+    <div class="loader-drone"></div>
+</div>
+
+<!-- Navigation -->
+<nav>
+    <div class="nav-container">
+        <div class="logo">🚁 AgriDrone</div>
+        <ul class="nav-links">
+            <li><a href="#features">Fonctionnalités</a></li>
+            <li><a href="#technology">Technologie</a></li>
+            <li><a href="#stats">Performance</a></li>
+            <li><a href="#demo">Démo</a></li>
+        </ul>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<section class="hero">
+    <div class="animated-bg">
+        <div class="drone-icon" style="left: 10%; animation-delay: 0s;">🚁</div>
+        <div class="drone-icon" style="left: 30%; animation-delay: 5s;">🚁</div>
+        <div class="drone-icon" style="left: 50%; animation-delay: 10s;">🚁</div>
+        <div class="drone-icon" style="left: 70%; animation-delay: 15s;">🚁</div>
+        <div class="drone-icon" style="left: 90%; animation-delay: 20s;">🚁</div>
+    </div>
+    <div class="hero-content">
+        <h1>L'Agriculture du Futur<br>Commence Aujourd'hui</h1>
+        <p class="subtitle">Système d'irrigation autonome par drones pour une agriculture précise et durable</p>
+        <div class="cta-buttons">
+            <a href="#demo" class="btn btn-primary">🚀 Lancer la Simulation</a>
+            <a href="#features" class="btn btn-secondary">En Savoir Plus</a>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" class="features scroll-fade">
+    <h2 class="section-title">Pourquoi Choisir AgriDrone?</h2>
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-icon">🤖</div>
+            <h3>Automatisation Totale</h3>
+            <p>Flotte de drones autonomes qui travaillent en coordination parfaite pour irriguer vos champs sans intervention humaine</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">💧</div>
+            <h3>Économie d'Eau</h3>
+            <p>Système d'irrigation de précision qui réduit la consommation d'eau de 40% par rapport aux méthodes traditionnelles</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <h3>Analyse en Temps Réel</h3>
+            <p>Surveillance continue avec rapports détaillés sur l'irrigation, la consommation et l'efficacité de votre système</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🌱</div>
+            <h3>Agriculture Durable</h3>
+            <p>Optimisation des ressources pour une agriculture respectueuse de l'environnement et économiquement viable</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">⚡</div>
+            <h3>Haute Performance</h3>
+            <p>Couverture jusqu'à 10 hectares par jour avec une précision centimétrique grâce à la navigation GPS</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📱</div>
+            <h3>Contrôle Intelligent</h3>
+            <p>Interface intuitive pour configurer et surveiller votre flotte de drones depuis n'importe où</p>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section id="stats" class="stats scroll-fade">
+    <h2 class="section-title">Performance Prouvée</h2>
+    <div class="stats-grid">
+        <div class="stat-item">
+            <div class="stat-number" data-target="95">0</div>
+            <div class="stat-label">% d'Efficacité</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" data-target="40">0</div>
+            <div class="stat-label">% d'Économie d'Eau</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" data-target="10">0</div>
+            <div class="stat-label">Hectares/Jour</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" data-target="24">0</div>
+            <div class="stat-label">h/24 Autonomie</div>
+        </div>
+    </div>
+</section>
+
+<!-- Technology Section -->
+<section id="technology" class="technology scroll-fade">
+    <h2 class="section-title">Technologie de Pointe</h2>
+    <div class="tech-content">
+        <div class="tech-visual">
+            <div class="orbit orbit-1">
+                <div class="tech-point" style="top: 0; left: 50%; transform: translateX(-50%);"></div>
+            </div>
+            <div class="orbit orbit-2">
+                <div class="tech-point" style="top: 50%; right: 0; transform: translateY(-50%);"></div>
+            </div>
+            <div class="orbit orbit-3">
+                <div class="tech-point" style="bottom: 0; left: 50%; transform: translateX(-50%);"></div>
+            </div>
+            <div class="tech-center">🚁</div>
+        </div>
+        <div class="tech-info">
+            <h3>Innovation & Intelligence</h3>
+            <p>AgriDrone utilise les dernières avancées en intelligence artificielle et en robotique pour révolutionner l'irrigation agricole.</p>
+            <ul class="tech-list">
+                <li>Navigation GPS RTK de précision centimétrique</li>
+                <li>IA pour l'optimisation des trajectoires</li>
+                <li>Capteurs multispectraux pour l'analyse des cultures</li>
+                <li>Système de recharge automatique</li>
+                <li>Communication mesh entre drones</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- Demo Section -->
+<section id="demo" class="features scroll-fade">
+    <h2 class="section-title">Essayez la Simulation</h2>
+    <div style="text-align: center; padding: 40px;">
+        <p style="color: var(--gray-text); margin-bottom: 30px; font-size: 18px;">
+            Découvrez la puissance d'AgriDrone avec notre simulation interactive 3D
+        </p>
+        <button class="btn btn-primary" onclick="launchSimulation()">
+            🎮 Démarrer la Simulation 3D
+        </button>
+        <p style="color: var(--gray-text); margin-top: 20px; font-size: 14px;">
+            Configuration requise : Navigateur moderne avec WebGL activé
+        </p>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <div class="footer-content">
+        <p style="color: var(--gray-text);">© 2025 AgriDrone - L'innovation au service de l'agriculture durable</p>
+        <div class="social-links">
+            <a href="#">📧</a>
+            <a href="#">🐦</a>
+            <a href="#">💼</a>
+            <a href="#">📘</a>
+        </div>
+    </div>
+</footer>
+
+<script>
+    // Smooth scrolling
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+
+    // Scroll animations
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, observerOptions);
+
+    document.querySelectorAll('.scroll-fade').forEach(el => {
+        observer.observe(el);
+    });
+
+    // Animated counter
+    const counters = document.querySelectorAll('.stat-number');
+    const speed = 200;
+
+    const countUp = (counter) => {
+        const target = +counter.getAttribute('data-target');
+        const increment = target / speed;
+
+        const updateCount = () => {
+            const count = +counter.innerText;
+
+            if (count < target) {
+                counter.innerText = Math.ceil(count + increment);
+                setTimeout(updateCount, 10);
+            } else {
+                counter.innerText = target;
+            }
+        };
+
+        updateCount();
+    };
+
+    const statsSection = document.querySelector('.stats');
+    const statsObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                counters.forEach(counter => {
+                    if (counter.innerText === '0') {
+                        countUp(counter);
+                    }
+                });
+            }
+        });
+    }, { threshold: 0.5 });
+
+    statsObserver.observe(statsSection);
+
+    // Mouse follow effect on feature cards
+    document.querySelectorAll('.feature-card').forEach(card => {
+        card.addEventListener('mousemove', (e) => {
+            const rect = card.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            card.style.setProperty('--mouse-x', `${x}%`);
+            card.style.setProperty('--mouse-y', `${y}%`);
+        });
+    });
+
+    // Launch simulation
+    function launchSimulation() {
+        window.open('index5.html', '_blank');
+    }
+
+    // Parallax effect on scroll
+    window.addEventListener('scroll', () => {
+        const scrolled = window.pageYOffset;
+        const parallax = document.querySelector('.hero');
+        if (parallax) {
+            parallax.style.transform = `translateY(${scrolled * 0.5}px)`;
+        }
+    });
+</script>
+</body>
+</html>

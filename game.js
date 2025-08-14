@@ -923,7 +923,7 @@ function generatePlants() {
     });
     plants = [];
 
-    const plantCount = 30;
+    const plantCount = 50;
 
     for(let i = 0; i < plantCount; i++) {
         const types = ['flower', 'tree', 'bush'];

@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriDrone - Simulation d'Irrigation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #87CEEB, #98D8E8);
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .panel {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        #hud {
+            top: 20px;
+            left: 20px;
+            min-width: 220px;
+            animation: slideInLeft 0.5s ease-out;
+        }
+
+        #hud h2 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+            font-size: 20px;
+            text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+
+        .stat-line {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 14px;
+            padding: 5px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .stat-line:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        #controls {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            animation: slideInUp 0.5s ease-out;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 14px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            transition: all 0.3s;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .slider-group label {
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100px;
+            cursor: pointer;
+        }
+
+        .slider-value {
+            color: #4CAF50;
+            font-weight: bold;
+            min-width: 20px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        #gameOver, #instructions {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            color: white;
+            animation: fadeIn 0.5s ease-out;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        #gameOver {
+            display: none;
+        }
+
+        #gameOver h1, #instructions h2 {
+            color: #4CAF50;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
+        }
+
+        #instructions p {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        #minimap {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            border: 2px solid #4CAF50;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            animation: slideInRight 0.5s ease-out;
+        }
+
+        #stats {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            display: none;
+            max-width: 250px;
+            backdrop-filter: blur(10px);
+            animation: slideInRight 0.5s ease-out;
+        }
+
+        #stats h3 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+
+        .drone-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        @keyframes slideInLeft {
+            from { transform: translateX(-100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideInUp {
+            from { transform: translateX(-50%) translateY(100px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+<!-- Canvas pour Three.js -->
+<canvas id="gameCanvas"></canvas>
+
+<!-- Minimap -->
+<canvas id="minimap"></canvas>
+
+<!-- HUD -->
+<div id="hud" class="panel">
+    <h2>🚁 AGRIDRONE</h2>
+    <div class="stat-line">
+        <span>Champ:</span>
+        <span id="fieldType">Maïs</span>
+    </div>
+    <div class="stat-line">
+        <span>Surface:</span>
+        <span id="fieldSize">5 Ha</span>
+    </div>
+    <div class="stat-line">
+        <span>Irrigation:</span>
+        <span><span id="plantsWatered">0</span>/<span id="totalPlants">0</span></span>
+    </div>
+    <div class="stat-line">
+        <span>Eau:</span>
+        <span id="waterUsed">0 L</span>
+    </div>
+    <div class="stat-line">
+        <span>Drones:</span>
+        <span id="droneCount">0</span>
+    </div>
+</div>
+
+<!-- Contrôles -->
+<div id="controls" class="panel">
+    <button id="startBtn">🚀 DÉMARRER</button>
+    <button id="pauseBtn">⏸️ PAUSE</button>
+    <button id="statsBtn">📊 STATS</button>
+
+    <div class="slider-group">
+        <label>Drones:</label>
+        <input type="range" id="droneSlider" min="1" max="6" value="3">
+        <span class="slider-value" id="droneValue">3</span>
+    </div>
+
+    <div class="slider-group">
+        <label>Rangées:</label>
+        <input type="range" id="rowSlider" min="5" max="10" value="7">
+        <span class="slider-value" id="rowValue">7</span>
+    </div>
+</div>
+
+<!-- Stats Panel -->
+<div id="stats" class="panel">
+    <h3>📊 Statistiques</h3>
+    <div id="droneStats"></div>
+    <div class="stat-line">
+        <span>Temps:</span>
+        <span id="gameTime">0:00</span>
+    </div>
+    <div class="stat-line">
+        <span>Efficacité:</span>
+        <span id="efficiency">0%</span>
+    </div>
+</div>
+
+<!-- Game Over -->
+<div id="gameOver" class="panel">
+    <h1>🎉 Mission Terminée!</h1>
+    <div class="stat-line">
+        <span>Surface irriguée:</span>
+        <span id="finalArea">0 Ha</span>
+    </div>
+    <div class="stat-line">
+        <span>Eau utilisée:</span>
+        <span id="finalWater">0 L</span>
+    </div>
+    <div class="stat-line">
+        <span>Temps total:</span>
+        <span id="finalTime">0:00</span>
+    </div>
+    <button id="restartBtn">🔄 Nouvelle Mission</button>
+    <button id="downloadPdfBtn" style="margin-top: 10px;">📄 Télécharger Rapport PDF</button>
+</div>
+
+<!-- Instructions -->
+<div id="instructions" class="panel">
+    <h2>🚁 AgriDrone</h2>
+    <p><strong>Mission:</strong> Irriguer votre champ de maïs avec une flotte de drones autonomes</p>
+    <p>🌾 Les drones travaillent ensemble pour couvrir tout le champ</p>
+    <p>💧 Ils se rechargent automatiquement à la station centrale</p>
+    <p>📊 Optimisez le nombre de drones selon la taille du champ</p>
+    <button id="startInstructions">Commencer</button>
+</div>
+
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- jsPDF pour générer les rapports PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+    // ========================================
+    // AGRIDRONE - SIMULATION D'IRRIGATION
+    // ========================================
+
+    // Variables globales
+    let scene, camera, renderer;
+    let drones = [];
+    let plants = [];
+    let gameRunning = false;
+    let gamePaused = false;
+    let startTime = 0;
+    let frameCount = 0;
+    let stats = {
+        plantsWatered: 0,
+        totalPlants: 0,
+        waterUsed: 0
+    };
+
+    // Configuration
+    const CONFIG = {
+        FIELD_SIZE: 600,
+        DRONE_SPEED: 2.5,
+        WATER_TIME: 800,
+        WATER_DISTANCE: 30,
+        REFILL_SPEED: 15,
+        FIELD_AREA: 5,
+        WATER_PER_PLANT: 10,
+        WATER_CAPACITY: 100
+    };
+
+    // Classe Plant
+    class Plant {
+        constructor(x, z, id) {
+            this.id = id;
+            this.position = new THREE.Vector3(x, 0, z);
+            this.watered = false;
+            this.mesh = null;
+            this.beingWatered = false;
+            this.createMesh();
+        }
+
+        createMesh() {
+            const geometry = new THREE.ConeGeometry(5, 15, 4);
+            const material = new THREE.MeshPhongMaterial({
+                color: 0xFFEB3B,
+                flatShading: true
+            });
+            this.mesh = new THREE.Mesh(geometry, material);
+            this.mesh.position.copy(this.position);
+            this.mesh.position.y = 7.5;
+            this.mesh.castShadow = true;
+            this.mesh.receiveShadow = true;
+            scene.add(this.mesh);
+        }
+
+        water() {
+            if (!this.watered && !this.beingWatered) {
+                this.beingWatered = true;
+                // Animation d'arrosage
+                const originalY = this.mesh.position.y;
+                this.mesh.position.y += 2;
+
+                setTimeout(() => {
+                    this.watered = true;
+                    this.beingWatered = false;
+                    this.mesh.material.color.setHex(0x4CAF50);
+                    this.mesh.position.y = originalY;
+                    stats.plantsWatered++;
+                    stats.waterUsed += CONFIG.WATER_PER_PLANT;
+                    updateHUD();
+                }, CONFIG.WATER_TIME);
+            }
+        }
+
+        update() {
+            if (this.mesh && !this.watered) {
+                // Petite animation de balancement
+                this.mesh.rotation.z = Math.sin(Date.now() * 0.001 + this.id) * 0.05;
+            }
+        }
+    }
+
+    // Classe Drone
+    class Drone {
+        constructor(id, startPos, color) {
+            this.id = id;
+            this.position = startPos.clone();
+            this.waterLevel = CONFIG.WATER_CAPACITY;
+            this.target = null;
+            this.state = 'IDLE';
+            this.mesh = null;
+            this.color = color;
+            this.plantsWatered = 0;
+            this.totalDistance = 0;
+            this.lastPosition = startPos.clone();
+            this.refills = 0;
+            this.assignedPlants = [];
+            this.createMesh();
+        }
+
+        createMesh() {
+            const group = new THREE.Group();
+
+            // Corps principal
+            const bodyGeometry = new THREE.BoxGeometry(12, 6, 12);
+            const bodyMaterial = new THREE.MeshPhongMaterial({
+                color: this.color,
+                metalness: 0.3,
+                roughness: 0.7
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.castShadow = true;
+            body.receiveShadow = true;
+            group.add(body);
+
+            // Réservoir d'eau (indicateur visuel)
+            const tankGeometry = new THREE.CylinderGeometry(2, 2, 4, 8);
+            const tankMaterial = new THREE.MeshPhongMaterial({
+                color: 0x2196F3,
+                transparent: true,
+                opacity: 0.7
+            });
+            this.waterTank = new THREE.Mesh(tankGeometry, tankMaterial);
+            this.waterTank.position.y = -5;
+            group.add(this.waterTank);
+
+            // Hélices
+            this.rotors = [];
+            for (let i = 0; i < 4; i++) {
+                const angle = (i / 4) * Math.PI * 2;
+                const rotor = new THREE.Mesh(
+                    new THREE.BoxGeometry(10, 0.5, 2),
+                    new THREE.MeshBasicMaterial({ color: 0x333333 })
+                );
+                rotor.position.x = Math.cos(angle) * 10;
+                rotor.position.z = Math.sin(angle) * 10;
+                rotor.position.y = 4;
+                this.rotors.push(rotor);
+                group.add(rotor);
+            }
+
+            this.mesh = group;
+            this.mesh.position.copy(this.position);
+            scene.add(this.mesh);
+        }
+
+        assignPlantRange(startIdx, endIdx) {
+            // Assigner une plage de plantes à ce drone
+            this.assignedPlants = [];
+            for (let i = startIdx; i <= endIdx && i < plants.length; i++) {
+                if (!plants[i].watered) {
+                    this.assignedPlants.push(plants[i]);
+                }
+            }
+        }
+
+        update() {
+            // Calculer la distance parcourue
+            const distance = this.position.distanceTo(this.lastPosition);
+            this.totalDistance += distance;
+            this.lastPosition = this.position.clone();
+
+            // Mise à jour du réservoir visuel
+            if (this.waterTank) {
+                const scale = this.waterLevel / CONFIG.WATER_CAPACITY;
+                this.waterTank.scale.y = scale;
+                this.waterTank.material.opacity = 0.3 + scale * 0.4;
+            }
+
+            // États du drone
+            switch(this.state) {
+                case 'IDLE':
+                    // Chercher la prochaine plante assignée non arrosée
+                    this.target = this.assignedPlants.find(p => !p.watered && !p.beingWatered);
+
+                    if (this.waterLevel < 20) {
+                        this.state = 'REFILLING';
+                        this.target = null;
+                    } else if (this.target) {
+                        this.state = 'MOVING';
+                    } else if (this.assignedPlants.length === 0) {
+                        // Si plus de plantes assignées, chercher n'importe quelle plante
+                        this.target = plants.find(p => !p.watered && !p.beingWatered);
+                        if (this.target) {
+                            this.state = 'MOVING';
+                        }
+                    }
+                    break;
+
+                case 'MOVING':
+                    if (this.target) {
+                        const targetPos = new THREE.Vector3(
+                            this.target.position.x,
+                            25,
+                            this.target.position.z
+                        );
+                        const direction = new THREE.Vector3()
+                            .subVectors(targetPos, this.position)
+                            .normalize();
+
+                        this.position.add(direction.multiplyScalar(CONFIG.DRONE_SPEED));
+                        this.position.y = 25;
+
+                        // Arrivé à destination
+                        if (this.position.distanceTo(targetPos) < CONFIG.WATER_DISTANCE) {
+                            this.state = 'WATERING';
+                            this.target.water();
+                            this.waterLevel -= 20;
+                            this.plantsWatered++;
+
+                            setTimeout(() => {
+                                this.target = null;
+                                this.state = 'IDLE';
+                            }, CONFIG.WATER_TIME);
+                        }
+                    } else {
+                        this.state = 'IDLE';
+                    }
+                    break;
+
+                case 'WATERING':
+                    // Animation d'arrosage
+                    if (this.mesh) {
+                        this.mesh.position.y = 25 + Math.sin(Date.now() * 0.01) * 2;
+                    }
+                    break;
+
+                case 'REFILLING':
+                    const stationPos = new THREE.Vector3(0, 25, 0);
+                    const direction = new THREE.Vector3()
+                        .subVectors(stationPos, this.position)
+                        .normalize();
+
+                    this.position.add(direction.multiplyScalar(CONFIG.DRONE_SPEED * 1.5));
+
+                    if (this.position.distanceTo(stationPos) < 40) {
+                        this.waterLevel = Math.min(CONFIG.WATER_CAPACITY, this.waterLevel + CONFIG.REFILL_SPEED);
+                        if (this.waterLevel >= CONFIG.WATER_CAPACITY) {
+                            this.refills++;
+                            this.state = 'IDLE';
+                        }
+                    }
+                    break;
+            }
+
+            // Mettre à jour la position et l'animation du mesh
+            if (this.mesh) {
+                this.mesh.position.copy(this.position);
+
+                // Rotation des hélices
+                this.rotors.forEach(rotor => {
+                    rotor.rotation.y += 0.5;
+                });
+
+                // Inclinaison selon la direction
+                if (this.state === 'MOVING' && this.target) {
+                    const angle = Math.atan2(
+                        this.target.position.z - this.position.z,
+                        this.target.position.x - this.position.x
+                    );
+                    this.mesh.rotation.y = angle;
+                    this.mesh.rotation.z = Math.sin(Date.now() * 0.002) * 0.1;
+                }
+            }
+        }
+    }
+
+    // Initialisation Three.js
+    function init() {
+        // Scene
+        scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x87CEEB, 100, 1000);
+
+        // Camera
+        camera = new THREE.PerspectiveCamera(
+            60,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            2000
+        );
+        camera.position.set(0, 150, 300);
+        camera.lookAt(0, 0, 0);
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({
+            canvas: document.getElementById('gameCanvas'),
+            antialias: true,
+            alpha: true
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // Lumières
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(100, 200, 100);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.left = -300;
+        directionalLight.shadow.camera.right = 300;
+        directionalLight.shadow.camera.top = 300;
+        directionalLight.shadow.camera.bottom = -300;
+        scene.add(directionalLight);
+
+        // Sol
+        const groundGeometry = new THREE.PlaneGeometry(CONFIG.FIELD_SIZE, CONFIG.FIELD_SIZE);
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x8B7355 });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Station centrale
+        const stationGroup = new THREE.Group();
+
+        // Base de la station
+        const stationGeometry = new THREE.CylinderGeometry(25, 30, 10, 8);
+        const stationMaterial = new THREE.MeshPhongMaterial({
+            color: 0x2196F3,
+            metalness: 0.5,
+            roughness: 0.3
+        });
+        const station = new THREE.Mesh(stationGeometry, stationMaterial);
+        station.position.y = 5;
+        station.castShadow = true;
+        station.receiveShadow = true;
+        stationGroup.add(station);
+
+        // Antenne de la station
+        const antennaGeometry = new THREE.CylinderGeometry(1, 1, 20, 8);
+        const antennaMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
+        const antenna = new THREE.Mesh(antennaGeometry, antennaMaterial);
+        antenna.position.y = 15;
+        stationGroup.add(antenna);
+
+        scene.add(stationGroup);
+
+        // Ciel
+        const skyGeometry = new THREE.SphereGeometry(800, 32, 32);
+        const skyMaterial = new THREE.MeshBasicMaterial({
+            color: 0x87CEEB,
+            side: THREE.BackSide
+        });
+        const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+        scene.add(sky);
+    }
+
+    // Génération du champ
+    function generateField(rows) {
+        // Nettoyer les anciennes plantes
+        plants.forEach(plant => {
+            if (plant.mesh) scene.remove(plant.mesh);
+        });
+        plants = [];
+
+        const spacing = CONFIG.FIELD_SIZE / (rows + 1);
+        const plantsPerRow = rows;
+        let plantId = 0;
+
+        for (let i = 0; i < rows; i++) {
+            for (let j = 0; j < plantsPerRow; j++) {
+                const x = (j - plantsPerRow / 2) * spacing * 0.8;
+                const z = (i - rows / 2) * spacing * 0.8;
+
+                // Éviter le centre (station)
+                if (Math.abs(x) < 50 && Math.abs(z) < 50) continue;
+
+                plants.push(new Plant(x, z, plantId++));
+            }
+        }
+
+        stats.totalPlants = plants.length;
+        updateHUD();
+    }
+
+    // Création des drones
+    function createDrones(count) {
+        // Nettoyer les anciens drones
+        drones.forEach(drone => {
+            if (drone.mesh) scene.remove(drone.mesh);
+        });
+        drones = [];
+
+        const colors = [0xFF5722, 0x2196F3, 0x4CAF50, 0xFFC107, 0x9C27B0, 0x00BCD4];
+        const plantsPerDrone = Math.ceil(plants.length / count);
+
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            const startPos = new THREE.Vector3(
+                Math.cos(angle) * 60,
+                30,
+                Math.sin(angle) * 60
+            );
+
+            const drone = new Drone(i + 1, startPos, colors[i % colors.length]);
+
+            // Assigner une plage de plantes à chaque drone
+            const startIdx = i * plantsPerDrone;
+            const endIdx = Math.min(startIdx + plantsPerDrone - 1, plants.length - 1);
+            drone.assignPlantRange(startIdx, endIdx);
+
+            drones.push(drone);
+        }
+
+        document.getElementById('droneCount').textContent = count;
+    }
+
+    // Démarrer une nouvelle partie
+    function startGame() {
+        gameRunning = true;
+        gamePaused = false;
+        startTime = Date.now();
+
+        stats.plantsWatered = 0;
+        stats.waterUsed = 0;
+        stats.totalPlants = 0;
+
+        const droneCount = parseInt(document.getElementById('droneSlider').value);
+        const rowCount = parseInt(document.getElementById('rowSlider').value);
+
+        generateField(rowCount);
+        createDrones(droneCount);
+
+        document.getElementById('gameOver').style.display = 'none';
+        document.getElementById('instructions').style.display = 'none';
+        updateHUD();
+    }
+
+    // Mettre en pause
+    function pauseGame() {
+        gamePaused = !gamePaused;
+        document.getElementById('pauseBtn').textContent = gamePaused ? '▶️ REPRENDRE' : '⏸️ PAUSE';
+    }
+
+    // Mettre à jour l'interface
+    function updateHUD() {
+        document.getElementById('plantsWatered').textContent = stats.plantsWatered;
+        document.getElementById('totalPlants').textContent = stats.totalPlants;
+        document.getElementById('waterUsed').textContent = Math.round(stats.waterUsed);
+
+        // Vérifier la fin de partie
+        if (gameRunning && stats.plantsWatered >= stats.totalPlants && stats.totalPlants > 0) {
+            endGame();
+        }
+    }
+
+    // Mettre à jour les stats détaillées
+    function updateStats() {
+        if (!gameRunning) return;
+
+        const elapsed = Date.now() - startTime;
+        const minutes = Math.floor(elapsed / 60000);
+        const seconds = Math.floor((elapsed % 60000) / 1000);
+        document.getElementById('gameTime').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+        const efficiency = stats.totalPlants > 0
+            ? Math.round((stats.plantsWatered / stats.totalPlants) * 100)
+            : 0;
+        document.getElementById('efficiency').textContent = `${efficiency}%`;
+
+        // Stats des drones
+        const droneStatsDiv = document.getElementById('droneStats');
+        droneStatsDiv.innerHTML = '';
+        drones.forEach(drone => {
+            const div = document.createElement('div');
+            div.className = 'drone-info';
+            const stateEmoji = {
+                'IDLE': '⏸️',
+                'MOVING': '✈️',
+                'WATERING': '💧',
+                'REFILLING': '🔋'
+            };
+            div.innerHTML = `Drone ${drone.id}: ${stateEmoji[drone.state] || ''} ${drone.state} - Eau: ${Math.round(drone.waterLevel)}%`;
+            droneStatsDiv.appendChild(div);
+        });
+    }
+
+    // Fin de partie
+    function endGame() {
+        gameRunning = false;
+
+        const elapsed = Date.now() - startTime;
+        const minutes = Math.floor(elapsed / 60000);
+        const seconds = Math.floor((elapsed % 60000) / 1000);
+
+        const coverage = (stats.plantsWatered / stats.totalPlants) * 100;
+        const irrigatedArea = (CONFIG.FIELD_AREA * coverage / 100).toFixed(2);
+
+        document.getElementById('finalArea').textContent = `${irrigatedArea} Ha`;
+        document.getElementById('finalWater').textContent = Math.round(stats.waterUsed);
+        document.getElementById('finalTime').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        document.getElementById('gameOver').style.display = 'block';
+
+        // Stocker les données pour le rapport PDF
+        window.missionData = {
+            date: new Date(),
+            duration: { minutes, seconds },
+            coverage,
+            irrigatedArea,
+            waterUsed: stats.waterUsed,
+            plantsWatered: stats.plantsWatered,
+            totalPlants: stats.totalPlants,
+            drones: drones.map(d => ({
+                id: d.id,
+                plantsWatered: d.plantsWatered,
+                distance: d.totalDistance,
+                refills: d.refills
+            }))
+        };
+    }
+
+    // Générer un rapport PDF
+    function generatePDF() {
+        if (!window.missionData) {
+            alert('Aucune donnée de mission disponible');
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const data = window.missionData;
+
+        // Couleurs
+        const primaryColor = [76, 175, 80]; // Vert
+        const secondaryColor = [33, 150, 243]; // Bleu
+        const textColor = [51, 51, 51]; // Gris foncé
+
+        let yPosition = 20;
+
+        // En-tête avec titre stylisé
+        doc.setFillColor(...primaryColor);
+        doc.rect(0, 0, 210, 40, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(24);
+        doc.setFont(undefined, 'bold');
+        doc.text('RAPPORT DE MISSION AGRIDRONE', 105, 20, { align: 'center' });
+
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'normal');
+        doc.text(`Généré le ${data.date.toLocaleDateString('fr-FR')} à ${data.date.toLocaleTimeString('fr-FR')}`, 105, 30, { align: 'center' });
+
+        yPosition = 55;
+
+        // Section Vue d'ensemble
+        doc.setTextColor(...textColor);
+        doc.setFontSize(16);
+        doc.setFont(undefined, 'bold');
+        doc.setDrawColor(...primaryColor);
+        doc.setLineWidth(0.5);
+        doc.text('📊 VUE D\'ENSEMBLE', 20, yPosition);
+        doc.line(20, yPosition + 2, 190, yPosition + 2);
+        yPosition += 15;
+
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'normal');
+
+        // Créer un tableau de statistiques
+        const overviewData = [
+            ['Durée de mission', `${data.duration.minutes}:${data.duration.seconds.toString().padStart(2, '0')}`],
+            ['Surface totale', `${CONFIG.FIELD_AREA} Ha`],
+            ['Surface irriguée', `${data.irrigatedArea} Ha`],
+            ['Couverture', `${data.coverage.toFixed(1)}%`],
+            ['Plants arrosés', `${data.plantsWatered} / ${data.totalPlants}`],
+            ['Eau totale utilisée', `${Math.round(data.waterUsed)} L`]
+        ];
+
+        overviewData.forEach(([label, value]) => {
+            doc.setFont(undefined, 'bold');
+            doc.text(label + ':', 30, yPosition);
+            doc.setFont(undefined, 'normal');
+            doc.text(value, 120, yPosition);
+            yPosition += 8;
+        });
+
+        yPosition += 10;
+
+        // Section Performance des Drones
+        doc.setFontSize(16);
+        doc.setFont(undefined, 'bold');
+        doc.text('🚁 PERFORMANCE DES DRONES', 20, yPosition);
+        doc.line(20, yPosition + 2, 190, yPosition + 2);
+        yPosition += 15;
+
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'normal');
+
+        // Tableau des drones
+        const droneHeaders = ['Drone', 'Plants arrosés', 'Distance (m)', 'Recharges', 'Efficacité'];
+        const droneData = data.drones.map(d => {
+            const efficiency = data.plantsWatered > 0 ?
+                ((d.plantsWatered / data.plantsWatered) * 100).toFixed(1) + '%' : '0%';
+            return [
+                `Drone ${d.id}`,
+                d.plantsWatered.toString(),
+                Math.round(d.distance).toString(),
+                d.refills.toString(),
+                efficiency
+            ];
+        });
+
+        // En-têtes du tableau
+        doc.setFillColor(...secondaryColor);
+        doc.rect(20, yPosition - 5, 170, 10, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont(undefined, 'bold');
+
+        const colWidths = [30, 35, 35, 35, 35];
+        let xPos = 25;
+        droneHeaders.forEach((header, i) => {
+            doc.text(header, xPos, yPosition);
+            xPos += colWidths[i];
+        });
+
+        yPosition += 10;
+        doc.setTextColor(...textColor);
+        doc.setFont(undefined, 'normal');
+
+        // Données du tableau
+        droneData.forEach(row => {
+            xPos = 25;
+            row.forEach((cell, i) => {
+                doc.text(cell, xPos, yPosition);
+                xPos += colWidths[i];
+            });
+            yPosition += 8;
+        });
+
+        yPosition += 10;
+
+        // Section Analyse Économique
+        doc.setFontSize(16);
+        doc.setFont(undefined, 'bold');
+        doc.text('💰 ANALYSE ÉCONOMIQUE', 20, yPosition);
+        doc.line(20, yPosition + 2, 190, yPosition + 2);
+        yPosition += 15;
+
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'normal');
+
+        const waterCost = (data.waterUsed * 0.002).toFixed(2);
+        const energyCost = ((data.duration.minutes + data.duration.seconds/60) * 0.05 * data.drones.length).toFixed(2);
+        const totalCost = (parseFloat(waterCost) + parseFloat(energyCost)).toFixed(2);
+        const costPerHa = (parseFloat(totalCost) / parseFloat(data.irrigatedArea)).toFixed(2);
+
+        const economicData = [
+            ['Coût de l\'eau (0.002€/L)', `${waterCost} €`],
+            ['Coût énergétique', `${energyCost} €`],
+            ['Coût total', `${totalCost} €`],
+            ['Coût par hectare', `${costPerHa} €/Ha`]
+        ];
+
+        economicData.forEach(([label, value]) => {
+            doc.setFont(undefined, 'bold');
+            doc.text(label + ':', 30, yPosition);
+            doc.setFont(undefined, 'normal');
+            doc.text(value, 120, yPosition);
+            yPosition += 8;
+        });
+
+        yPosition += 10;
+
+        // Section Recommandations
+        doc.setFontSize(16);
+        doc.setFont(undefined, 'bold');
+        doc.text('💡 RECOMMANDATIONS', 20, yPosition);
+        doc.line(20, yPosition + 2, 190, yPosition + 2);
+        yPosition += 15;
+
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+
+        const recommendations = [];
+
+        if (data.coverage < 50) {
+            recommendations.push('⚠️ Efficacité faible. Augmentez le nombre de drones pour améliorer la couverture.');
+        } else if (data.coverage < 80) {
+            recommendations.push('📈 Efficacité moyenne. Optimisez la répartition des zones entre les drones.');
+        } else {
+            recommendations.push('✅ Excellente efficacité! La configuration actuelle est optimale.');
+        }
+
+        const waterPerPlant = data.plantsWatered > 0 ? data.waterUsed / data.plantsWatered : 0;
+        if (waterPerPlant > 15) {
+            recommendations.push('💧 Consommation d\'eau élevée. Vérifiez les paramètres d\'irrigation.');
+        }
+
+        if (data.drones.length < 3 && data.totalPlants > 30) {
+            recommendations.push('🚁 Pour les grands champs, utilisez au moins 3 drones pour une meilleure efficacité.');
+        }
+
+        const avgRefills = data.drones.reduce((sum, d) => sum + d.refills, 0) / data.drones.length;
+        if (avgRefills > 3) {
+            recommendations.push('🔋 Nombre élevé de recharges. Optimisez les trajets ou augmentez la capacité des réservoirs.');
+        }
+
+        recommendations.forEach(rec => {
+            const lines = doc.splitTextToSize(rec, 160);
+            lines.forEach(line => {
+                doc.text(line, 30, yPosition);
+                yPosition += 6;
+            });
+            yPosition += 2;
+        });
+
+        // Graphique de performance (simple barre de progression)
+        yPosition += 10;
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'bold');
+        doc.text('Indicateur de Performance Globale:', 20, yPosition);
+        yPosition += 10;
+
+        // Barre de progression
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(1);
+        doc.rect(20, yPosition - 5, 170, 10);
+
+        // Remplissage selon la performance
+        const performanceColor = data.coverage >= 80 ? primaryColor :
+            data.coverage >= 50 ? [255, 193, 7] : [244, 67, 54];
+        doc.setFillColor(...performanceColor);
+        doc.rect(20, yPosition - 5, 170 * (data.coverage / 100), 10, 'F');
+
+        doc.setTextColor(...textColor);
+        doc.setFontSize(10);
+        doc.text(`${data.coverage.toFixed(1)}%`, 105, yPosition, { align: 'center' });
+
+        // Pied de page
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text('© 2025 AgriDrone - Système de Gestion d\'Irrigation Automatisée', 105, 285, { align: 'center' });
+        doc.text(`Page 1/1`, 105, 290, { align: 'center' });
+
+        // Sauvegarder le PDF
+        const fileName = `AgriDrone_Rapport_${data.date.getFullYear()}${(data.date.getMonth()+1).toString().padStart(2,'0')}${data.date.getDate().toString().padStart(2,'0')}_${data.date.getHours().toString().padStart(2,'0')}${data.date.getMinutes().toString().padStart(2,'0')}.pdf`;
+        doc.save(fileName);
+    }
+
+    // Afficher/masquer les stats
+    function toggleStats() {
+        const statsPanel = document.getElementById('stats');
+        statsPanel.style.display = statsPanel.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Dessiner la minimap
+    function drawMinimap() {
+        const canvas = document.getElementById('minimap');
+        const ctx = canvas.getContext('2d');
+
+        // Fond
+        ctx.fillStyle = '#8B7355';
+        ctx.fillRect(0, 0, 150, 150);
+
+        // Grille
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 0.5;
+        for (let i = 0; i < 150; i += 15) {
+            ctx.beginPath();
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i, 150);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, i);
+            ctx.lineTo(150, i);
+            ctx.stroke();
+        }
+
+        // Station
+        ctx.fillStyle = '#2196F3';
+        ctx.beginPath();
+        ctx.arc(75, 75, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Plantes
+        plants.forEach(plant => {
+            const x = (plant.position.x / CONFIG.FIELD_SIZE + 0.5) * 150;
+            const z = (plant.position.z / CONFIG.FIELD_SIZE + 0.5) * 150;
+            ctx.fillStyle = plant.watered ? '#4CAF50' : (plant.beingWatered ? '#FFA726' : '#FFEB3B');
+            ctx.fillRect(x - 1, z - 1, 3, 3);
+        });
+
+        // Drones
+        drones.forEach((drone, index) => {
+            const x = (drone.position.x / CONFIG.FIELD_SIZE + 0.5) * 150;
+            const z = (drone.position.z / CONFIG.FIELD_SIZE + 0.5) * 150;
+
+            // Couleur selon l'état
+            const stateColors = {
+                'IDLE': '#FFFFFF',
+                'MOVING': '#FF5722',
+                'WATERING': '#2196F3',
+                'REFILLING': '#FFC107'
+            };
+            ctx.fillStyle = stateColors[drone.state] || '#FF5722';
+
+            ctx.beginPath();
+            ctx.arc(x, z, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Numéro du drone
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '8px Arial';
+            ctx.fillText(drone.id, x - 2, z + 2);
+        });
+    }
+
+    // Boucle d'animation
+    function animate() {
+        requestAnimationFrame(animate);
+
+        if (gameRunning && !gamePaused) {
+            // Mettre à jour les drones
+            drones.forEach(drone => drone.update());
+
+            // Mettre à jour les plantes
+            plants.forEach(plant => plant.update());
+
+            // Mettre à jour l'interface
+            updateHUD();
+            updateStats();
+            drawMinimap();
+        }
+
+        // Rotation de la caméra autour du champ
+        const time = Date.now() * 0.0002;
+        const radius = 350;
+        camera.position.x = Math.sin(time) * radius;
+        camera.position.z = Math.cos(time) * radius;
+        camera.position.y = 150 + Math.sin(time * 2) * 50;
+        camera.lookAt(0, 0, 0);
+
+        // Animation de la station
+        const station = scene.children.find(child => child.type === 'Group');
+        if (station && station.children[0]) {
+            station.rotation.y += 0.01;
+        }
+
+        renderer.render(scene, camera);
+        frameCount++;
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialiser Three.js
+        init();
+        animate();
+
+        // Boutons
+        document.getElementById('downloadPdfBtn').addEventListener('click', generatePDF);
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+        document.getElementById('statsBtn').addEventListener('click', toggleStats);
+        document.getElementById('restartBtn').addEventListener('click', startGame);
+        document.getElementById('startInstructions').addEventListener('click', () => {
+            document.getElementById('instructions').style.display = 'none';
+        });
+
+        // Sliders
+        document.getElementById('droneSlider').addEventListener('input', (e) => {
+            document.getElementById('droneValue').textContent = e.target.value;
+        });
+
+        document.getElementById('rowSlider').addEventListener('input', (e) => {
+            document.getElementById('rowValue').textContent = e.target.value;
+        });
+
+        // Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Touches clavier
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && gameRunning) {
+                pauseGame();
+            } else if (e.code === 'KeyS') {
+                toggleStats();
+            } else if (e.code === 'Enter' && !gameRunning) {
+                startGame();
+            }
+        });
+
+        console.log('✅ AgriDrone prêt!');
+        console.log('📌 Contrôles: Espace = Pause | S = Stats | Enter = Démarrer');
+    });
+</script>
+</body>
+</html>

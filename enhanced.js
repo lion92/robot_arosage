@@ -1,455 +1,449 @@
 // ==========================================
-// enhancedGame.js - FONCTIONNALITÉS AVANCÉES
+// enhanced.js - AMÉLIORATIONS DU JEU TACTICAL DRONE
 // ==========================================
 
-// Affichage des meilleurs scores
-function showHighScores() {
-    const scores = JSON.parse(localStorage.getItem('tacticalDroneScores') || '[]');
+// Configuration des améliorations
+const ENHANCED_CONFIG = {
+    BUILDING_COUNT: 25,  // Augmenté à 25 comme demandé
+    SPECIAL_ABILITIES: true,
+    WEATHER_EFFECTS: true,
+    ADVANCED_AI: true,
+    SCORE_SYSTEM: true
+};
 
-    if (scores.length === 0) {
-        alert('Aucun score enregistré pour le moment!');
+// Système de score
+let gameScore = {
+    points: 0,
+    combo: 0,
+    maxCombo: 0,
+    multiplier: 1,
+    buildingsDestroyed: 0,
+    missilesFired: 0,
+    hits: 0,
+    accuracy: 0
+};
+
+// ==========================================
+// OVERRIDE DE LA GÉNÉRATION DE VILLE - 25 BÂTIMENTS
+// ==========================================
+
+// Remplacer la fonction generateCity pour avoir 25 bâtiments
+const originalGenerateCity = window.generateCity;
+window.generateCity = function() {
+    buildings = [];
+    const blockSize = 100;
+    const buildingCount = ENHANCED_CONFIG.BUILDING_COUNT; // 25 bâtiments
+
+    for (let i = 0; i < buildingCount; i++) {
+        let x, z;
+
+        // Distribution améliorée des bâtiments
+        do {
+            x = (Math.random() - 0.5) * CONFIG.CITY_SIZE * 0.9;
+            z = (Math.random() - 0.5) * CONFIG.CITY_SIZE * 0.9;
+        } while (Math.abs(x) < 80 && Math.abs(z) < 80);
+
+        // Aligner sur la grille
+        x = Math.round(x / blockSize) * blockSize + (Math.random() - 0.5) * 30;
+        z = Math.round(z / blockSize) * blockSize + (Math.random() - 0.5) * 30;
+
+        const width = 25 + Math.random() * 25;
+        const height = 40 + Math.random() * 120;
+        const depth = 25 + Math.random() * 25;
+
+        buildings.push(new Building(x, z, width, height, depth));
+    }
+
+    // Ajouter des bâtiments spéciaux
+    addSpecialBuildings();
+
+    document.getElementById('totalTargets').textContent = buildingCount;
+    updateStats();
+};
+
+// ==========================================
+// BÂTIMENTS SPÉCIAUX
+// ==========================================
+
+function addSpecialBuildings() {
+    // Ajouter 3 bâtiments blindés (plus résistants)
+    for (let i = 0; i < 3 && i < buildings.length; i++) {
+        const building = buildings[i];
+        building.health = 200;
+        building.maxHealth = 200;
+        building.isArmored = true;
+
+        // Changer la couleur pour indiquer qu'il est blindé
+        if (building.mesh) {
+            building.mesh.material.color.setHex(0x333333);
+            building.mesh.material.metalness = 0.8;
+        }
+    }
+}
+
+// ==========================================
+// SYSTÈME DE COMBO ET SCORE
+// ==========================================
+
+// Override de la fonction takeDamage pour ajouter le système de score
+const originalBuildingPrototype = Building.prototype.takeDamage;
+Building.prototype.takeDamage = function(damage, attacker) {
+    if (this.destroyed) return;
+
+    // Calcul du score
+    gameScore.points += Math.floor(damage * gameScore.multiplier);
+    gameScore.combo++;
+
+    // Mise à jour du multiplicateur
+    if (gameScore.combo > 0 && gameScore.combo % 5 === 0) {
+        gameScore.multiplier = Math.min(gameScore.multiplier + 0.5, 5);
+        showComboNotification();
+    }
+
+    // Reset combo timer
+    clearTimeout(window.comboResetTimer);
+    window.comboResetTimer = setTimeout(() => {
+        gameScore.combo = 0;
+        gameScore.multiplier = 1;
+    }, 3000);
+
+    // Appeler la fonction originale
+    originalBuildingPrototype.call(this, damage, attacker);
+
+    // Mise à jour de l'affichage du score
+    updateScoreDisplay();
+};
+
+// ==========================================
+// CAPACITÉS SPÉCIALES
+// ==========================================
+
+// Ajouter un bouton pour l'attaque ultime
+function addUltimateButton() {
+    const controls = document.getElementById('tacticalControls');
+    if (controls && !document.getElementById('ultimateBtn')) {
+        const ultimateBtn = document.createElement('button');
+        ultimateBtn.id = 'ultimateBtn';
+        ultimateBtn.className = 'tactical-btn';
+        ultimateBtn.style.background = 'linear-gradient(135deg, #9C27B0, #673AB7)';
+        ultimateBtn.textContent = '💥 FRAPPE ORBITALE';
+        ultimateBtn.onclick = executeOrbitalStrike;
+        controls.appendChild(ultimateBtn);
+    }
+}
+
+// Frappe orbitale
+let orbitalStrikeReady = true;
+function executeOrbitalStrike() {
+    if (!orbitalStrikeReady) {
+        showAlert("Frappe orbitale en recharge!");
         return;
     }
 
-    let scoreHTML = '<h2 style="color: #ff5722;">🏆 MEILLEURS SCORES</h2>';
-    scoreHTML += '<ol style="color: white; font-size: 18px;">';
+    orbitalStrikeReady = false;
+    showAlert("FRAPPE ORBITALE LANCÉE!");
 
-    scores.forEach((score, index) => {
-        const date = new Date(score.date).toLocaleDateString('fr-FR');
-        const minutes = Math.floor(score.time / 60000);
-        const seconds = Math.floor((score.time % 60000) / 1000);
+    // Effet visuel spectaculaire
+    const targetBuildings = buildings.filter(b => !b.destroyed).slice(0, 5);
 
-        scoreHTML += `
-            <li style="margin: 10px 0;">
-                <strong>${score.score.toLocaleString()}</strong> points
-                <br>
-                <small>Difficulté: ${score.difficulty} | Temps: ${minutes}:${seconds.toString().padStart(2, '0')} | ${date}</small>
-            </li>
-        `;
+    targetBuildings.forEach((building, index) => {
+        setTimeout(() => {
+            // Rayon laser depuis le ciel
+            const laserGeometry = new THREE.CylinderGeometry(2, 5, 500);
+            const laserMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00ffff,
+                transparent: true,
+                opacity: 0.8
+            });
+            const laser = new THREE.Mesh(laserGeometry, laserMaterial);
+            laser.position.copy(building.position);
+            laser.position.y = 250;
+            scene.add(laser);
+
+            // Animation du laser
+            let laserIntensity = 0;
+            const laserAnimation = setInterval(() => {
+                laserIntensity += 0.1;
+                laser.material.opacity = Math.sin(laserIntensity) * 0.8 + 0.2;
+                laser.scale.x = 1 + Math.sin(laserIntensity) * 0.3;
+                laser.scale.z = 1 + Math.sin(laserIntensity) * 0.3;
+
+                if (laserIntensity > Math.PI) {
+                    building.takeDamage(1000, null);
+                    scene.remove(laser);
+                    clearInterval(laserAnimation);
+                }
+            }, 30);
+        }, index * 200);
     });
 
-    scoreHTML += '</ol>';
-
-    // Créer un modal pour afficher les scores
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: linear-gradient(135deg, #1a1a2e, #16213e);
-        padding: 30px;
-        border-radius: 15px;
-        border: 2px solid #ff5722;
-        z-index: 10001;
-        max-height: 80vh;
-        overflow-y: auto;
-        min-width: 400px;
-        box-shadow: 0 0 30px rgba(255, 87, 34, 0.5);
-    `;
-
-    modal.innerHTML = scoreHTML + `
-        <button onclick="this.parentElement.remove()" style="
-            margin-top: 20px;
-            padding: 10px 30px;
-            background: #ff5722;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-        ">FERMER</button>
-    `;
-
-    document.body.appendChild(modal);
+    // Cooldown de 60 secondes
+    setTimeout(() => {
+        orbitalStrikeReady = true;
+        showAlert("Frappe orbitale prête!");
+    }, 60000);
 }
 
-// Système de paramètres
-function showSettings() {
-    const settingsHTML = `
-        <div id="settingsModal" style="
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            padding: 30px;
-            border-radius: 15px;
-            border: 2px solid #ff5722;
-            z-index: 10001;
-            color: white;
-            min-width: 400px;
-            box-shadow: 0 0 30px rgba(255, 87, 34, 0.5);
-        ">
-            <h2 style="color: #ff5722; margin-bottom: 20px;">⚙️ PARAMÈTRES</h2>
-            
-            <div style="margin: 15px 0;">
-                <label>Volume des effets sonores:</label>
-                <input type="range" id="sfxVolume" min="0" max="100" value="50" 
-                       style="width: 100%; margin-top: 5px;">
-            </div>
-            
-            <div style="margin: 15px 0;">
-                <label>Qualité graphique:</label>
-                <select id="graphicsQuality" style="
-                    width: 100%;
-                    padding: 5px;
-                    margin-top: 5px;
-                    background: rgba(255, 255, 255, 0.1);
-                    color: white;
-                    border: 1px solid #ff5722;
-                    border-radius: 5px;
-                ">
-                    <option value="low">Basse</option>
-                    <option value="medium" selected>Moyenne</option>
-                    <option value="high">Haute</option>
-                    <option value="ultra">Ultra</option>
-                </select>
-            </div>
-            
-            <div style="margin: 15px 0;">
-                <label>
-                    <input type="checkbox" id="particlesEnabled" checked>
-                    Effets de particules
-                </label>
-            </div>
-            
-            <div style="margin: 15px 0;">
-                <label>
-                    <input type="checkbox" id="weatherEnabled" checked>
-                    Effets météo
-                </label>
-            </div>
-            
-            <div style="margin: 15px 0;">
-                <label>
-                    <input type="checkbox" id="shadowsEnabled" checked>
-                    Ombres dynamiques
-                </label>
-            </div>
-            
-            <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: center;">
-                <button onclick="saveSettings()" style="
-                    padding: 10px 30px;
-                    background: #4CAF50;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-weight: bold;
-                ">SAUVEGARDER</button>
-                
-                <button onclick="document.getElementById('settingsModal').remove()" style="
-                    padding: 10px 30px;
-                    background: #ff5722;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-weight: bold;
-                ">ANNULER</button>
-            </div>
+// ==========================================
+// EFFETS MÉTÉO
+// ==========================================
+
+function createWeatherEffects() {
+    if (!ENHANCED_CONFIG.WEATHER_EFFECTS) return;
+
+    // Particules de pluie
+    const rainGeometry = new THREE.BufferGeometry();
+    const rainCount = 1000;
+    const positions = new Float32Array(rainCount * 3);
+
+    for (let i = 0; i < rainCount * 3; i += 3) {
+        positions[i] = (Math.random() - 0.5) * CONFIG.CITY_SIZE;
+        positions[i + 1] = Math.random() * 500;
+        positions[i + 2] = (Math.random() - 0.5) * CONFIG.CITY_SIZE;
+    }
+
+    rainGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const rainMaterial = new THREE.PointsMaterial({
+        color: 0xaaaaaa,
+        size: 2,
+        transparent: true,
+        opacity: 0.6
+    });
+
+    const rain = new THREE.Points(rainGeometry, rainMaterial);
+    scene.add(rain);
+
+    // Animation de la pluie
+    function animateRain() {
+        const positions = rain.geometry.attributes.position.array;
+        for (let i = 1; i < positions.length; i += 3) {
+            positions[i] -= 5;
+            if (positions[i] < 0) {
+                positions[i] = 500;
+            }
+        }
+        rain.geometry.attributes.position.needsUpdate = true;
+        requestAnimationFrame(animateRain);
+    }
+
+    // Activer/désactiver selon le temps
+    if (Math.random() > 0.7) {
+        animateRain();
+    }
+}
+
+// ==========================================
+// IA AMÉLIORÉE POUR LES DRONES
+// ==========================================
+
+// Override de la fonction searchTarget pour une IA plus intelligente
+const originalSearchTarget = Drone.prototype.searchTarget;
+Drone.prototype.searchTarget = function() {
+    if (!ENHANCED_CONFIG.ADVANCED_AI) {
+        originalSearchTarget.call(this);
+        return;
+    }
+
+    const availableTargets = buildings.filter(b =>
+        !b.destroyed && b.targetedBy.length < 2
+    );
+
+    if (availableTargets.length > 0) {
+        // Ciblage intelligent basé sur plusieurs facteurs
+        let bestTarget = null;
+        let bestScore = -Infinity;
+
+        availableTargets.forEach(building => {
+            const distance = this.position.distanceTo(building.position);
+            const healthRatio = building.health / building.maxHealth;
+
+            // Prioriser les bâtiments endommagés et proches
+            let score = 0;
+            score -= distance * 0.5; // Pénalité de distance
+            score += (1 - healthRatio) * 100; // Bonus pour bâtiments endommagés
+            score -= building.targetedBy.length * 50; // Pénalité si déjà ciblé
+
+            if (building.isArmored) {
+                score -= 25; // Pénalité pour bâtiments blindés
+            }
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestTarget = building;
+            }
+        });
+
+        if (bestTarget) {
+            this.target = bestTarget;
+            this.target.targetedBy.push(this);
+            this.state = 'TARGETING';
+        }
+    } else {
+        this.state = 'SEARCHING';
+    }
+};
+
+// ==========================================
+// INTERFACE UTILISATEUR AMÉLIORÉE
+// ==========================================
+
+// Ajouter un panneau de score
+function addScorePanel() {
+    if (document.getElementById('scorePanel')) return;
+
+    const scorePanel = document.createElement('div');
+    scorePanel.id = 'scorePanel';
+    scorePanel.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 340px;
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 193, 7, 0.5);
+        min-width: 150px;
+        box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+    `;
+
+    scorePanel.innerHTML = `
+        <h3 style="color: #FFC107; margin-bottom: 10px;">📊 SCORE</h3>
+        <div class="stat-line">
+            <span>Points:</span>
+            <span id="scorePoints" style="color: #FFC107;">0</span>
+        </div>
+        <div class="stat-line">
+            <span>Combo:</span>
+            <span id="scoreCombo" style="color: #FF5722;">x0</span>
+        </div>
+        <div class="stat-line">
+            <span>Multi:</span>
+            <span id="scoreMultiplier" style="color: #4CAF50;">x1</span>
         </div>
     `;
 
-    const modal = document.createElement('div');
-    modal.innerHTML = settingsHTML;
-    document.body.appendChild(modal.firstElementChild);
-
-    // Charger les paramètres sauvegardés
-    loadSettings();
+    document.body.appendChild(scorePanel);
 }
 
-function saveSettings() {
-    const settings = {
-        sfxVolume: document.getElementById('sfxVolume').value,
-        graphicsQuality: document.getElementById('graphicsQuality').value,
-        particlesEnabled: document.getElementById('particlesEnabled').checked,
-        weatherEnabled: document.getElementById('weatherEnabled').checked,
-        shadowsEnabled: document.getElementById('shadowsEnabled').checked
-    };
+// Mise à jour de l'affichage du score
+function updateScoreDisplay() {
+    const pointsEl = document.getElementById('scorePoints');
+    const comboEl = document.getElementById('scoreCombo');
+    const multiEl = document.getElementById('scoreMultiplier');
 
-    localStorage.setItem('tacticalDroneSettings', JSON.stringify(settings));
-    applySettings(settings);
-    document.getElementById('settingsModal').remove();
-
-    // Notification de sauvegarde
-    showNotification('Paramètres sauvegardés!', 'success');
+    if (pointsEl) pointsEl.textContent = gameScore.points.toLocaleString();
+    if (comboEl) comboEl.textContent = `x${gameScore.combo}`;
+    if (multiEl) multiEl.textContent = `x${gameScore.multiplier.toFixed(1)}`;
 }
 
-function loadSettings() {
-    const settings = JSON.parse(localStorage.getItem('tacticalDroneSettings') || '{}');
-
-    if (document.getElementById('sfxVolume')) {
-        document.getElementById('sfxVolume').value = settings.sfxVolume || 50;
-    }
-    if (document.getElementById('graphicsQuality')) {
-        document.getElementById('graphicsQuality').value = settings.graphicsQuality || 'medium';
-    }
-    if (document.getElementById('particlesEnabled')) {
-        document.getElementById('particlesEnabled').checked = settings.particlesEnabled !== false;
-    }
-    if (document.getElementById('weatherEnabled')) {
-        document.getElementById('weatherEnabled').checked = settings.weatherEnabled !== false;
-    }
-    if (document.getElementById('shadowsEnabled')) {
-        document.getElementById('shadowsEnabled').checked = settings.shadowsEnabled !== false;
-    }
-}
-
-function applySettings(settings) {
-    // Appliquer les paramètres graphiques
-    if (typeof renderer !== 'undefined') {
-        renderer.shadowMap.enabled = settings.shadowsEnabled !== false;
-
-        // Qualité graphique
-        switch(settings.graphicsQuality) {
-            case 'low':
-                renderer.setPixelRatio(0.5);
-                break;
-            case 'medium':
-                renderer.setPixelRatio(1);
-                break;
-            case 'high':
-                renderer.setPixelRatio(window.devicePixelRatio);
-                break;
-            case 'ultra':
-                renderer.setPixelRatio(window.devicePixelRatio * 1.5);
-                break;
-        }
-    }
-
-    // Effets météo
-    const weatherOverlay = document.querySelector('.weather-overlay');
-    if (weatherOverlay) {
-        weatherOverlay.style.display = settings.weatherEnabled !== false ? 'block' : 'none';
-    }
-}
-
-// Système de notifications
-function showNotification(message, type = 'info') {
-    const colors = {
-        info: '#2196F3',
-        success: '#4CAF50',
-        warning: '#FFC107',
-        error: '#f44336'
-    };
-
+// Notification de combo
+function showComboNotification() {
     const notification = document.createElement('div');
     notification.style.cssText = `
         position: fixed;
         top: 50%;
         left: 50%;
-        transform: translate(-50%, -50%);
-        background: ${colors[type]};
+        transform: translate(-50%, -50%) scale(0);
+        background: linear-gradient(135deg, #FFC107, #FF5722);
         color: white;
         padding: 20px 40px;
         border-radius: 10px;
-        font-size: 18px;
+        font-size: 32px;
         font-weight: bold;
-        z-index: 10002;
-        animation: notificationPulse 0.5s ease-out;
-        box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        z-index: 1001;
+        animation: comboPopup 0.5s ease-out forwards;
     `;
 
-    notification.textContent = message;
+    notification.textContent = `COMBO x${gameScore.combo}!`;
     document.body.appendChild(notification);
 
-    setTimeout(() => {
-        notification.style.animation = 'notificationFade 0.5s ease-out forwards';
-        setTimeout(() => notification.remove(), 500);
-    }, 2000);
+    setTimeout(() => notification.remove(), 2000);
 }
 
-// Animations CSS supplémentaires
-const additionalStyles = document.createElement('style');
-additionalStyles.textContent = `
-    @keyframes notificationPulse {
-        0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
-        50% { transform: translate(-50%, -50%) scale(1.1); }
-        100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-    }
-    
-    @keyframes notificationFade {
-        from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-        to { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-    }
-    
-    .achievement {
-        position: fixed;
-        top: 20px;
-        right: -400px;
-        background: linear-gradient(135deg, #FFD700, #FFA500);
-        color: #333;
-        padding: 15px 25px;
-        border-radius: 10px;
-        font-weight: bold;
-        z-index: 10003;
-        transition: right 0.5s ease-out;
-        box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
-    }
-    
-    .achievement.show {
-        right: 20px;
-    }
-    
-    .achievement-icon {
-        font-size: 24px;
-        margin-right: 10px;
-    }
-`;
-document.head.appendChild(additionalStyles);
+// ==========================================
+// EFFETS VISUELS AMÉLIORÉS
+// ==========================================
 
-// Système d'achievements
-const achievements = {
-    firstBlood: { name: "Premier Sang", icon: "🎯", unlocked: false },
-    comboMaster: { name: "Maître du Combo", icon: "⚡", unlocked: false, requirement: 10 },
-    speedDemon: { name: "Démon de Vitesse", icon: "🏃", unlocked: false },
-    perfectionist: { name: "Perfectionniste", icon: "💯", unlocked: false },
-    destroyer: { name: "Destructeur", icon: "💥", unlocked: false }
+// Override createExplosion pour des explosions plus spectaculaires
+const originalCreateExplosion = window.createExplosion;
+window.createExplosion = function(position) {
+    // Explosion originale
+    originalCreateExplosion(position);
+
+    // Ajouter des effets supplémentaires
+    // Onde de choc étendue
+    const shockwaveGeometry = new THREE.RingGeometry(1, 2, 32);
+    const shockwaveMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffaa00,
+        transparent: true,
+        opacity: 0.8,
+        side: THREE.DoubleSide
+    });
+
+    for (let i = 0; i < 3; i++) {
+        const shockwave = new THREE.Mesh(shockwaveGeometry, shockwaveMaterial);
+        shockwave.position.copy(position);
+        shockwave.rotation.x = -Math.PI / 2;
+        scene.add(shockwave);
+
+        // Animation décalée
+        setTimeout(() => {
+            const animateShockwave = () => {
+                shockwave.scale.x += 0.8;
+                shockwave.scale.y += 0.8;
+                shockwave.material.opacity -= 0.03;
+
+                if (shockwave.material.opacity > 0) {
+                    requestAnimationFrame(animateShockwave);
+                } else {
+                    scene.remove(shockwave);
+                }
+            };
+            animateShockwave();
+        }, i * 100);
+    }
+
+    // Flash lumineux
+    const flash = new THREE.PointLight(0xffaa00, 10, 200);
+    flash.position.copy(position);
+    scene.add(flash);
+
+    let flashIntensity = 10;
+    const flashAnimation = setInterval(() => {
+        flashIntensity *= 0.9;
+        flash.intensity = flashIntensity;
+
+        if (flashIntensity < 0.1) {
+            scene.remove(flash);
+            clearInterval(flashAnimation);
+        }
+    }, 30);
 };
 
-function checkAchievements() {
-    // Premier sang
-    if (!achievements.firstBlood.unlocked && buildings.some(b => b.destroyed)) {
-        unlockAchievement('firstBlood');
-    }
+// ==========================================
+// CONTRÔLES CLAVIER AMÉLIORÉS
+// ==========================================
 
-    // Maître du combo
-    if (!achievements.comboMaster.unlocked && combo >= 10) {
-        unlockAchievement('comboMaster');
-    }
-
-    // Destructeur - tous les bâtiments détruits
-    if (!achievements.destroyer.unlocked && buildings.every(b => b.destroyed)) {
-        unlockAchievement('destroyer');
-    }
-}
-
-function unlockAchievement(achievementId) {
-    const achievement = achievements[achievementId];
-    if (achievement.unlocked) return;
-
-    achievement.unlocked = true;
-
-    const achievementDiv = document.createElement('div');
-    achievementDiv.className = 'achievement';
-    achievementDiv.innerHTML = `
-        <span class="achievement-icon">${achievement.icon}</span>
-        <span>Achievement Débloqué!</span><br>
-        <strong>${achievement.name}</strong>
-    `;
-
-    document.body.appendChild(achievementDiv);
-
-    setTimeout(() => {
-        achievementDiv.classList.add('show');
-    }, 100);
-
-    setTimeout(() => {
-        achievementDiv.classList.remove('show');
-        setTimeout(() => achievementDiv.remove(), 500);
-    }, 3000);
-
-    // Bonus de score
-    score += 1000;
-
-    // Sauvegarder les achievements
-    localStorage.setItem('tacticalDroneAchievements', JSON.stringify(achievements));
-}
-
-// Contrôles clavier améliorés
 document.addEventListener('keydown', (e) => {
-    if (!gameRunning) return;
-
     switch(e.key.toLowerCase()) {
-        case '1':
-        case '2':
-        case '3':
-        case '4':
-        case '5':
-        case '6':
-            const droneIndex = parseInt(e.key) - 1;
-            if (drones[droneIndex]) {
-                selectDrone(droneIndex);
-            }
-            break;
-
-        case 'q':
-            setFormation('diamond');
-            break;
-
-        case 'w':
-            setFormation('line');
-            break;
-
-        case 'e':
-            setFormation('circle');
-            break;
-
-        case ' ':
-        case 'space':
-            e.preventDefault();
-            executeCoordinatedStrike();
-            break;
-
-        case 'r':
-            spawnReinforcements();
-            break;
-
         case 'u':
-            if (ultimateReady) {
-                activateUltimate();
-            }
+            executeOrbitalStrike();
             break;
-
-        case 'escape':
+        case 'p':
             togglePause();
             break;
-
-        case 'tab':
-            e.preventDefault();
+        case 'm':
             toggleMinimap();
             break;
-
-        case 'm':
-            toggleMusic();
-            break;
-
-        case 'h':
-            showHelp();
+        case 'escape':
+            showPauseMenu();
             break;
     }
 });
 
-// Sélection de drone
-function selectDrone(index) {
-    if (drones[index]) {
-        // Effet visuel de sélection
-        drones.forEach((drone, i) => {
-            if (drone.mesh) {
-                drone.mesh.scale.set(i === index ? 1.2 : 1, i === index ? 1.2 : 1, i === index ? 1.2 : 1);
-            }
-        });
-
-        // Suivre le drone sélectionné avec la caméra
-        const selectedDrone = drones[index];
-        if (mainCamera && selectedDrone.position) {
-            const offset = new THREE.Vector3(100, 100, 100);
-            mainCamera.position.lerp(
-                selectedDrone.position.clone().add(offset),
-                0.1
-            );
-            mainCamera.lookAt(selectedDrone.position);
-        }
-
-        showNotification(`Drone ${index + 1} sélectionné`, 'info');
-    }
-}
-
 // Système de pause
 let isPaused = false;
-
 function togglePause() {
     isPaused = !isPaused;
     gameRunning = !isPaused;
@@ -462,6 +456,8 @@ function togglePause() {
 }
 
 function showPauseMenu() {
+    if (document.getElementById('pauseMenu')) return;
+
     const pauseMenu = document.createElement('div');
     pauseMenu.id = 'pauseMenu';
     pauseMenu.style.cssText = `
@@ -491,7 +487,7 @@ function showPauseMenu() {
             font-size: 18px;
             font-weight: bold;
         ">REPRENDRE</button>
-        <button onclick="restartMission()" style="
+        <button onclick="location.reload()" style="
             margin: 10px;
             padding: 15px 40px;
             background: #ff5722;
@@ -502,17 +498,6 @@ function showPauseMenu() {
             font-size: 18px;
             font-weight: bold;
         ">RECOMMENCER</button>
-        <button onclick="quitToMenu()" style="
-            margin: 10px;
-            padding: 15px 40px;
-            background: #9C27B0;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 18px;
-            font-weight: bold;
-        ">MENU PRINCIPAL</button>
     `;
 
     document.body.appendChild(pauseMenu);
@@ -520,174 +505,212 @@ function showPauseMenu() {
 
 function hidePauseMenu() {
     const pauseMenu = document.getElementById('pauseMenu');
-    if (pauseMenu) {
-        pauseMenu.remove();
-    }
-
-    if (gameRunning) {
-        animate();
-    }
+    if (pauseMenu) pauseMenu.remove();
 }
 
-function restartMission() {
-    hidePauseMenu();
-    location.reload(); // Simple reload pour recommencer
-}
-
-function quitToMenu() {
-    hidePauseMenu();
-    gameRunning = false;
-    document.getElementById('hud').style.display = 'none';
-    document.getElementById('tacticalControls').style.display = 'none';
-    document.getElementById('mainMenu').style.display = 'flex';
-
-    // Nettoyer la scène
-    if (scene) {
-        while(scene.children.length > 0) {
-            scene.remove(scene.children[0]);
-        }
-    }
-}
-
-// Toggle minimap
+// Minimap toggle
 function toggleMinimap() {
-    const minimap = document.getElementById('minimap');
-    if (minimap) {
+    if (!document.getElementById('minimap')) {
+        createMinimap();
+    } else {
+        const minimap = document.getElementById('minimap');
         minimap.style.display = minimap.style.display === 'none' ? 'block' : 'none';
     }
 }
 
-// Musique (placeholder)
-let musicEnabled = true;
-
-function toggleMusic() {
-    musicEnabled = !musicEnabled;
-    showNotification(musicEnabled ? 'Musique activée' : 'Musique désactivée', 'info');
-    // Ici vous pourriez ajouter la gestion audio réelle
-}
-
-// Aide
-function showHelp() {
-    const helpHTML = `
-        <div style="
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            padding: 30px;
-            border-radius: 15px;
-            border: 2px solid #ff5722;
-            z-index: 10001;
-            color: white;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 0 30px rgba(255, 87, 34, 0.5);
-        ">
-            <h2 style="color: #ff5722; margin-bottom: 20px;">📖 AIDE & CONTRÔLES</h2>
-            
-            <div style="margin-bottom: 20px;">
-                <h3 style="color: #FFC107;">Contrôles Clavier:</h3>
-                <ul style="list-style: none; padding: 0;">
-                    <li>1-6 : Sélectionner un drone</li>
-                    <li>Q : Formation Diamant</li>
-                    <li>W : Formation Ligne</li>
-                    <li>E : Formation Cercle</li>
-                    <li>ESPACE : Frappe Coordonnée</li>
-                    <li>R : Appeler des Renforts</li>
-                    <li>U : Activer l'Ultimate</li>
-                    <li>TAB : Afficher/Masquer Minimap</li>
-                    <li>ESC : Pause</li>
-                    <li>M : Musique On/Off</li>
-                    <li>H : Afficher cette aide</li>
-                </ul>
-            </div>
-            
-            <div style="margin-bottom: 20px;">
-                <h3 style="color: #FFC107;">Objectifs:</h3>
-                <ul>
-                    <li>Détruire tous les bâtiments ennemis</li>
-                    <li>Maximiser votre score avec des combos</li>
-                    <li>Utiliser les formations tactiques</li>
-                    <li>Collecter les power-ups</li>
-                </ul>
-            </div>
-            
-            <div style="margin-bottom: 20px;">
-                <h3 style="color: #FFC107;">Types de Bâtiments:</h3>
-                <ul>
-                    <li>🏢 Normal : 100 HP</li>
-                    <li>🏛️ Blindé : 200 HP (gris foncé)</li>
-                    <li>🛡️ Bouclier : 150 HP (bleu)</li>
-                </ul>
-            </div>
-            
-            <button onclick="this.parentElement.remove()" style="
-                margin-top: 20px;
-                padding: 10px 30px;
-                background: #ff5722;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                cursor: pointer;
-                font-weight: bold;
-            ">FERMER</button>
-        </div>
+function createMinimap() {
+    const minimap = document.createElement('canvas');
+    minimap.id = 'minimap';
+    minimap.width = 200;
+    minimap.height = 200;
+    minimap.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        border: 2px solid #ff5722;
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.8);
     `;
+    document.body.appendChild(minimap);
 
-    const helpDiv = document.createElement('div');
-    helpDiv.innerHTML = helpHTML;
-    document.body.appendChild(helpDiv.firstElementChild);
+    // Mettre à jour la minimap
+    updateMinimap();
 }
 
-// Initialisation au chargement
-window.addEventListener('DOMContentLoaded', () => {
-    // Masquer l'écran de chargement après 2 secondes
-    setTimeout(() => {
-        const loadingScreen = document.getElementById('loadingScreen');
-        if (loadingScreen) {
-            loadingScreen.style.opacity = '0';
-            setTimeout(() => {
-                loadingScreen.style.display = 'none';
-                document.getElementById('mainMenu').style.display = 'flex';
-            }, 1000);
+function updateMinimap() {
+    const minimap = document.getElementById('minimap');
+    if (!minimap) return;
+
+    const ctx = minimap.getContext('2d');
+    ctx.clearRect(0, 0, 200, 200);
+
+    // Fond
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, 200, 200);
+
+    // Échelle
+    const scale = 200 / CONFIG.CITY_SIZE;
+
+    // Dessiner les bâtiments
+    buildings.forEach(building => {
+        if (!building.destroyed) {
+            ctx.fillStyle = building.isArmored ? '#666' : '#999';
+            const x = (building.position.x + CONFIG.CITY_SIZE/2) * scale;
+            const z = (building.position.z + CONFIG.CITY_SIZE/2) * scale;
+            ctx.fillRect(x - 3, z - 3, 6, 6);
         }
-    }, 2000);
+    });
 
-    // Charger les achievements sauvegardés
-    const savedAchievements = localStorage.getItem('tacticalDroneAchievements');
-    if (savedAchievements) {
-        Object.assign(achievements, JSON.parse(savedAchievements));
+    // Dessiner les drones
+    drones.forEach(drone => {
+        ctx.fillStyle = '#ff5722';
+        const x = (drone.position.x + CONFIG.CITY_SIZE/2) * scale;
+        const z = (drone.position.z + CONFIG.CITY_SIZE/2) * scale;
+        ctx.beginPath();
+        ctx.arc(x, z, 3, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Base
+    ctx.fillStyle = '#2196F3';
+    ctx.beginPath();
+    ctx.arc(100, 100, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mettre à jour régulièrement
+    if (gameRunning) {
+        requestAnimationFrame(updateMinimap);
     }
+}
 
-    // Charger et appliquer les paramètres
-    const savedSettings = localStorage.getItem('tacticalDroneSettings');
-    if (savedSettings) {
-        applySettings(JSON.parse(savedSettings));
+// ==========================================
+// ANIMATIONS CSS SUPPLÉMENTAIRES
+// ==========================================
+
+const enhancedStyles = document.createElement('style');
+enhancedStyles.textContent = `
+    @keyframes comboPopup {
+        0% {
+            transform: translate(-50%, -50%) scale(0) rotate(0deg);
+            opacity: 0;
+        }
+        50% {
+            transform: translate(-50%, -50%) scale(1.2) rotate(5deg);
+            opacity: 1;
+        }
+        100% {
+            transform: translate(-50%, -50%) scale(1) rotate(0deg);
+            opacity: 1;
+        }
     }
+    
+    .stat-line {
+        transition: all 0.3s ease;
+    }
+    
+    .stat-line:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+        transform: translateX(5px);
+    }
+    
+    #scorePanel .stat-line span:last-child {
+        font-weight: bold;
+        text-shadow: 0 0 5px currentColor;
+    }
+    
+    @keyframes pulseGlow {
+        0%, 100% { box-shadow: 0 0 20px rgba(255, 87, 34, 0.3); }
+        50% { box-shadow: 0 0 40px rgba(255, 87, 34, 0.6); }
+    }
+    
+    #ultimateBtn {
+        animation: pulseGlow 2s infinite;
+    }
+`;
+document.head.appendChild(enhancedStyles);
 
-    console.log('🚁 TacticalDrone Enhanced - Système chargé');
-    console.log('📌 Appuyez sur H en jeu pour l\'aide');
+// ==========================================
+// INITIALISATION AU CHARGEMENT
+// ==========================================
+
+window.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 Enhanced Mode Activé!');
+    console.log('📊 25 bâtiments configurés');
+    console.log('💥 Capacités spéciales disponibles');
+
+    // Ajouter les éléments d'interface
+    setTimeout(() => {
+        addScorePanel();
+        addUltimateButton();
+        createWeatherEffects();
+    }, 1000);
 });
 
-// Export des fonctions pour utilisation globale
-window.enhancedGame = {
-    showHighScores,
-    showSettings,
-    saveSettings,
-    loadSettings,
-    applySettings,
-    showNotification,
-    checkAchievements,
-    unlockAchievement,
-    selectDrone,
-    togglePause,
-    toggleMinimap,
-    toggleMusic,
-    showHelp,
-    restartMission,
-    quitToMenu
+// Override de checkVictory pour ajouter le score final
+const originalCheckVictory = window.checkVictory;
+window.checkVictory = function() {
+    const destroyed = buildings.filter(b => b.destroyed).length;
+    const total = buildings.length;
+
+    if (destroyed === total) {
+        // Bonus de victoire
+        gameScore.points += 10000;
+        gameScore.maxCombo = Math.max(gameScore.maxCombo, gameScore.combo);
+
+        // Calculer la précision
+        if (gameScore.missilesFired > 0) {
+            gameScore.accuracy = Math.round((gameScore.hits / gameScore.missilesFired) * 100);
+        }
+
+        // Afficher le score final
+        showFinalScore();
+    }
+
+    // Appeler la fonction originale
+    originalCheckVictory();
 };
 
-console.log('✅ Enhanced Game Scripts Loaded');
+// Affichage du score final
+function showFinalScore() {
+    const finalScoreDiv = document.createElement('div');
+    finalScoreDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #1a1a2e, #16213e);
+        padding: 40px;
+        border-radius: 20px;
+        border: 3px solid #ff5722;
+        color: white;
+        text-align: center;
+        z-index: 10000;
+        min-width: 400px;
+        box-shadow: 0 0 50px rgba(255, 87, 34, 0.5);
+    `;
+
+    finalScoreDiv.innerHTML = `
+        <h1 style="color: #4CAF50; font-size: 36px; margin-bottom: 20px;">VICTOIRE!</h1>
+        <h2 style="color: #FFC107; font-size: 28px; margin-bottom: 30px;">Score Final: ${gameScore.points.toLocaleString()}</h2>
+        <div style="text-align: left; margin: 20px 0;">
+            <p>🎯 Précision: ${gameScore.accuracy}%</p>
+            <p>🔥 Combo Maximum: x${gameScore.maxCombo}</p>
+            <p>💥 Bâtiments Détruits: ${buildings.length}/${ENHANCED_CONFIG.BUILDING_COUNT}</p>
+        </div>
+        <button onclick="location.reload()" style="
+            margin-top: 20px;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #ff5722, #f44336);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+        ">NOUVELLE MISSION</button>
+    `;
+
+    document.body.appendChild(finalScoreDiv);
+}
+
+console.log('✅ Enhanced.js chargé avec succès!');

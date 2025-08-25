@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROBOTS 3D DANCE PARTY</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      overflow: hidden;
+      background: #000;
+      font-family: 'Arial Black', sans-serif;
+    }
+
+    #canvas {
+      display: block;
+    }
+
+    .controls {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      text-align: center;
+      background: rgba(0,0,0,0.8);
+      padding: 20px;
+      border-radius: 20px;
+      border: 2px solid #00ffff;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 30px rgba(0,255,255,0.5);
+    }
+
+    .music-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .music-btn {
+      background: linear-gradient(45deg, #ff00ff, #00ffff);
+      color: #000;
+      border: none;
+      padding: 10px 15px;
+      font-size: 0.9em;
+      font-weight: bold;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 0 20px rgba(255,255,255,0.3);
+    }
+
+    .music-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 30px rgba(255,255,255,0.6);
+    }
+
+    .music-btn.active {
+      background: linear-gradient(45deg, #00ff00, #ffff00);
+      animation: btnPulse 0.5s ease-in-out infinite;
+    }
+
+    @keyframes btnPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .intensity-control {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .intensity-label {
+      color: #00ffff;
+      font-weight: bold;
+      text-shadow: 0 0 10px rgba(0,255,255,1);
+      font-size: 0.9em;
+    }
+
+    .intensity-slider {
+      width: 150px;
+      height: 8px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: linear-gradient(90deg, #00ff00, #ffff00, #ff0000);
+      border-radius: 5px;
+      outline: none;
+    }
+
+    .intensity-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #fff;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(255,255,255,1);
+    }
+
+    .title {
+      position: absolute;
+      top: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #fff;
+      font-size: 2.5em;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 5px;
+      text-shadow:
+              0 0 20px #00ffff,
+              0 0 40px #ff00ff,
+              0 0 60px #ffff00;
+      animation: titleGlow 2s ease-in-out infinite;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    @keyframes titleGlow {
+      0%, 100% {
+        opacity: 0.8;
+        text-shadow:
+                0 0 20px #00ffff,
+                0 0 40px #ff00ff;
+      }
+      50% {
+        opacity: 1;
+        text-shadow:
+                0 0 30px #00ffff,
+                0 0 60px #ff00ff,
+                0 0 90px #ffff00;
+      }
+    }
+
+    .info {
+      color: #00ffff;
+      margin-top: 10px;
+      font-size: 0.8em;
+      text-shadow: 0 0 5px rgba(0,255,255,0.5);
+    }
+
+    @media (max-width: 768px) {
+      .controls {
+        width: 90%;
+        padding: 15px;
+      }
+      .music-btn {
+        padding: 8px 12px;
+        font-size: 0.8em;
+      }
+      .title {
+        font-size: 1.8em;
+        top: 100px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="controls">
+  <div class="music-buttons">
+    <button class="music-btn" onclick="startMusic('techno')">⚡ TECHNO</button>
+    <button class="music-btn" onclick="startMusic('dubstep')">🔊 DUBSTEP</button>
+    <button class="music-btn" onclick="startMusic('disco')">🕺 DISCO</button>
+    <button class="music-btn" onclick="startMusic('metal')">🤘 METAL</button>
+    <button class="music-btn" onclick="startMusic('trance')">🌀 TRANCE</button>
+    <button class="music-btn" onclick="stopMusic()">⏹️ STOP</button>
+  </div>
+  <div class="intensity-control">
+    <span class="intensity-label">🔥 INTENSITÉ:</span>
+    <input type="range" class="intensity-slider" id="intensity" min="0" max="100" value="75">
+    <span class="intensity-label" id="intensityValue">75%</span>
+  </div>
+  <div class="info">🎮 Utilisez la souris pour tourner la caméra!</div>
+</div>
+
+<h1 class="title">🤖 3D ROBOT RAVE 🤖</h1>
+
+<canvas id="canvas"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+  // Variables globales
+  let scene, camera, renderer;
+  let robots = [];
+  let particles = [];
+  let lights = [];
+  let time = 0;
+  let currentStyle = null;
+  let animationId = null;
+  let beatCount = 0;
+  let mouseX = 0, mouseY = 0;
+
+  // Configuration des styles
+  const musicStyles = {
+    techno: {
+      bpm: 140,
+      bassPattern: [1, 0, 1, 0, 1, 0, 1, 0],
+      energy: 0.9,
+      colors: [0xff00ff, 0x00ffff, 0xffff00]
+    },
+    dubstep: {
+      bpm: 140,
+      bassPattern: [1, 0, 0, 0, 1, 0, 0, 0],
+      energy: 1,
+      colors: [0x00ff00, 0xff00ff, 0x00ffff]
+    },
+    disco: {
+      bpm: 120,
+      bassPattern: [1, 0.5, 1, 0.5],
+      energy: 0.7,
+      colors: [0xff69b4, 0xffd700, 0x00ced1]
+    },
+    metal: {
+      bpm: 180,
+      bassPattern: [1, 1, 1, 1],
+      energy: 1,
+      colors: [0xff0000, 0xff8800, 0xffffff]
+    },
+    trance: {
+      bpm: 138,
+      bassPattern: [1, 0.7, 0.8, 0.6, 1, 0.7, 0.8, 0.6],
+      energy: 0.85,
+      colors: [0x00ffff, 0xff00ff, 0x00ff00]
+    }
+  };
+
+  // Initialisation Three.js
+  function init() {
+    // Scène
+    scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, 0.02);
+
+    // Caméra
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 10, 30);
+    camera.lookAt(0, 5, 0);
+
+    // Rendu
+    renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    // Lumières principales
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+    scene.add(ambientLight);
+
+    // Lumières colorées dansantes
+    for (let i = 0; i < 3; i++) {
+      const light = new THREE.PointLight(0xffffff, 2, 50);
+      light.castShadow = true;
+      light.position.set(
+              Math.cos(i * Math.PI * 2 / 3) * 15,
+              10,
+              Math.sin(i * Math.PI * 2 / 3) * 15
+      );
+      scene.add(light);
+      lights.push(light);
+    }
+
+    // Projecteur principal
+    const spotLight = new THREE.SpotLight(0xffffff, 2);
+    spotLight.position.set(0, 30, 0);
+    spotLight.castShadow = true;
+    spotLight.angle = Math.PI / 4;
+    spotLight.penumbra = 0.2;
+    scene.add(spotLight);
+
+    // Sol avec reflets
+    const floorGeometry = new THREE.PlaneGeometry(100, 100);
+    const floorMaterial = new THREE.MeshPhongMaterial({
+      color: 0x111111,
+      shininess: 100,
+      reflectivity: 0.5
+    });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // Grille au sol
+    const gridHelper = new THREE.GridHelper(100, 50, 0x00ffff, 0x004444);
+    scene.add(gridHelper);
+
+    // Créer les robots
+    createRobots();
+
+    // Créer le système de particules
+    createParticleSystem();
+
+    // Créer les murs de visualisation
+    createVisualizerWalls();
+
+    // Événements
+    window.addEventListener('resize', onWindowResize);
+    document.addEventListener('mousemove', onMouseMove);
+  }
+
+  // Créer un robot 3D
+  function createRobot(x, z, color) {
+    const robot = new THREE.Group();
+
+    // Corps
+    const bodyGeometry = new THREE.BoxGeometry(4, 6, 3);
+    const bodyMaterial = new THREE.MeshPhongMaterial({
+      color: color,
+      shininess: 100,
+      specular: 0xffffff
+    });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = 5;
+    body.castShadow = true;
+    body.receiveShadow = true;
+    robot.add(body);
+
+    // Tête
+    const headGeometry = new THREE.BoxGeometry(3, 3, 3);
+    const headMaterial = new THREE.MeshPhongMaterial({
+      color: 0x444444,
+      shininess: 100,
+      specular: color
+    });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.y = 9;
+    head.castShadow = true;
+    robot.add(head);
+    robot.head = head;
+
+    // Visière
+    const visorGeometry = new THREE.BoxGeometry(3.1, 1, 0.5);
+    const visorMaterial = new THREE.MeshPhongMaterial({
+      color: 0x00ffff,
+      emissive: 0x00ffff,
+      emissiveIntensity: 0.5
+    });
+    const visor = new THREE.Mesh(visorGeometry, visorMaterial);
+    visor.position.set(0, 9, 1.6);
+    robot.add(visor);
+    robot.visor = visor;
+
+    // Antenne
+    const antennaGeometry = new THREE.CylinderGeometry(0.1, 0.1, 2);
+    const antennaMaterial = new THREE.MeshPhongMaterial({ color: 0x888888 });
+    const antenna = new THREE.Mesh(antennaGeometry, antennaMaterial);
+    antenna.position.y = 11;
+    robot.add(antenna);
+
+    // Sphère lumineuse sur l'antenne
+    const sphereGeometry = new THREE.SphereGeometry(0.3);
+    const sphereMaterial = new THREE.MeshPhongMaterial({
+      color: color,
+      emissive: color,
+      emissiveIntensity: 0.8
+    });
+    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    sphere.position.y = 12;
+    robot.add(sphere);
+    robot.antenna = sphere;
+
+    // Bras
+    const armGeometry = new THREE.CylinderGeometry(0.5, 0.5, 4);
+    const armMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
+
+    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+    leftArm.position.set(-2.5, 5, 0);
+    leftArm.castShadow = true;
+    robot.add(leftArm);
+    robot.leftArm = leftArm;
+
+    const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+    rightArm.position.set(2.5, 5, 0);
+    rightArm.castShadow = true;
+    robot.add(rightArm);
+    robot.rightArm = rightArm;
+
+    // Jambes
+    const legGeometry = new THREE.CylinderGeometry(0.6, 0.6, 4);
+    const legMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
+
+    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    leftLeg.position.set(-1, 1, 0);
+    leftLeg.castShadow = true;
+    robot.add(leftLeg);
+    robot.leftLeg = leftLeg;
+
+    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+    rightLeg.position.set(1, 1, 0);
+    rightLeg.castShadow = true;
+    robot.add(rightLeg);
+    robot.rightLeg = rightLeg;
+
+    // Position du robot
+    robot.position.set(x, 0, z);
+    robot.baseY = 0;
+    robot.color = color;
+
+    return robot;
+  }
+
+  // Créer les 5 robots
+  function createRobots() {
+    const colors = [0xff00ff, 0x00ffff, 0xffff00, 0x00ff00, 0xff0080];
+    const positions = [
+      [-10, 0],
+      [-5, 5],
+      [0, 0],
+      [5, 5],
+      [10, 0]
+    ];
+
+    positions.forEach((pos, i) => {
+      const robot = createRobot(pos[0], pos[1], colors[i]);
+      scene.add(robot);
+      robots.push(robot);
+    });
+  }
+
+  // Créer le système de particules
+  function createParticleSystem() {
+    const particleGeometry = new THREE.BufferGeometry();
+    const particleCount = 500;
+    const positions = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount * 3; i++) {
+      positions[i] = (Math.random() - 0.5) * 100;
+    }
+
+    particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const particleMaterial = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 0.5,
+      transparent: true,
+      opacity: 0.6,
+      blending: THREE.AdditiveBlending
+    });
+
+    const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+    scene.add(particleSystem);
+    particles.push(particleSystem);
+  }
+
+  // Créer les murs de visualisation
+  function createVisualizerWalls() {
+    const barCount = 20;
+    const barWidth = 1;
+    const barSpacing = 2;
+
+    for (let i = 0; i < barCount; i++) {
+      const barGeometry = new THREE.BoxGeometry(barWidth, 1, 5);
+      const barMaterial = new THREE.MeshPhongMaterial({
+        color: new THREE.Color().setHSL(i / barCount, 1, 0.5),
+        emissive: new THREE.Color().setHSL(i / barCount, 1, 0.5),
+        emissiveIntensity: 0.3
+      });
+
+      // Mur gauche
+      const leftBar = new THREE.Mesh(barGeometry, barMaterial);
+      leftBar.position.set(-25, 0, -20 + i * barSpacing);
+      scene.add(leftBar);
+      leftBar.isBar = true;
+      leftBar.barIndex = i;
+
+      // Mur droit
+      const rightBar = new THREE.Mesh(barGeometry, barMaterial.clone());
+      rightBar.position.set(25, 0, -20 + i * barSpacing);
+      scene.add(rightBar);
+      rightBar.isBar = true;
+      rightBar.barIndex = i;
+    }
+  }
+
+  // Animation des robots
+  function animateRobots(bassIntensity, intensity, beatIndex) {
+    robots.forEach((robot, index) => {
+      const phase = index * 0.2;
+
+      // Saut principal
+      const bounce = bassIntensity * 8;
+      robot.position.y = robot.baseY + bounce + Math.sin(time * 0.005 + phase) * 2;
+
+      // Rotation du corps
+      robot.rotation.y = Math.sin(time * 0.002 + phase) * intensity;
+
+      // Mouvement de la tête
+      if (robot.head) {
+        robot.head.rotation.x = Math.sin(time * 0.008 + phase) * 0.3 * intensity;
+        robot.head.rotation.z = Math.cos(time * 0.006 + phase) * 0.2 * intensity;
+      }
+
+      // Animation des bras
+      if (robot.leftArm && robot.rightArm) {
+        robot.leftArm.rotation.z = Math.sin(time * 0.005 + phase) * intensity * 1.5;
+        robot.rightArm.rotation.z = -Math.sin(time * 0.005 + phase) * intensity * 1.5;
+
+        robot.leftArm.rotation.x = Math.cos(time * 0.004) * intensity;
+        robot.rightArm.rotation.x = -Math.cos(time * 0.004) * intensity;
+      }
+
+      // Animation des jambes
+      if (robot.leftLeg && robot.rightLeg) {
+        robot.leftLeg.rotation.x = Math.sin(time * 0.006 + phase) * intensity * 0.5;
+        robot.rightLeg.rotation.x = -Math.sin(time * 0.006 + phase) * intensity * 0.5;
+      }
+
+      // Effet sur la visière
+      if (robot.visor) {
+        const hue = (time * 0.001 + index * 0.2) % 1;
+        robot.visor.material.emissive = new THREE.Color().setHSL(hue, 1, 0.5);
+        robot.visor.material.emissiveIntensity = 0.3 + bassIntensity * 0.7;
+      }
+
+      // Pulsation de l'antenne
+      if (robot.antenna) {
+        const scale = 1 + bassIntensity * 0.5;
+        robot.antenna.scale.set(scale, scale, scale);
+        robot.antenna.material.emissiveIntensity = bassIntensity;
+      }
+
+      // Mouvements spéciaux selon le beat
+      if (beatIndex % 4 === 0 && bassIntensity > 0.8) {
+        robot.rotation.x = Math.sin(time * 0.01) * 0.2;
+      }
+
+      // Effet de groupe
+      if (index === 2 && bassIntensity > 0.9) {
+        robot.position.y += 5;
+        robot.rotation.y += Math.PI * 0.1;
+      }
+    });
+  }
+
+  // Animation des lumières
+  function animateLights(bassIntensity, intensity) {
+    lights.forEach((light, index) => {
+      const angle = time * 0.002 + index * Math.PI * 2 / 3;
+      light.position.x = Math.cos(angle) * 15;
+      light.position.z = Math.sin(angle) * 15;
+      light.position.y = 10 + Math.sin(time * 0.005) * 5;
+
+      // Changement de couleur
+      const hue = (time * 0.0005 + index * 0.33) % 1;
+      light.color.setHSL(hue, 1, 0.5);
+      light.intensity = 1 + bassIntensity * 2;
+    });
+  }
+
+  // Animation des barres de visualisation
+  function animateBars(bassIntensity, intensity) {
+    scene.traverse((child) => {
+      if (child.isBar) {
+        const wave = Math.sin(time * 0.003 + child.barIndex * 0.3) * 0.5 + 0.5;
+        const height = 1 + (bassIntensity * 15 + wave * 5) * intensity;
+        child.scale.y = height;
+        child.position.y = height / 2;
+
+        // Changement de couleur
+        const hue = (time * 0.0002 + child.barIndex * 0.05) % 1;
+        child.material.emissive.setHSL(hue, 1, 0.5);
+        child.material.emissiveIntensity = 0.3 + bassIntensity * 0.5;
+      }
+    });
+  }
+
+  // Animation des particules
+  function animateParticles() {
+    particles.forEach(particleSystem => {
+      particleSystem.rotation.y += 0.001;
+      const positions = particleSystem.geometry.attributes.position.array;
+
+      for (let i = 0; i < positions.length; i += 3) {
+        positions[i + 1] += Math.sin(time * 0.001 + i) * 0.01;
+
+        if (positions[i + 1] > 50) positions[i + 1] = -50;
+        if (positions[i + 1] < -50) positions[i + 1] = 50;
+      }
+
+      particleSystem.geometry.attributes.position.needsUpdate = true;
+    });
+  }
+
+  // Contrôle de la musique
+  const intensitySlider = document.getElementById('intensity');
+  const intensityValue = document.getElementById('intensityValue');
+  intensitySlider.addEventListener('input', (e) => {
+    intensityValue.textContent = e.target.value + '%';
+  });
+
+  function startMusic(style) {
+    document.querySelectorAll('.music-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+
+    currentStyle = musicStyles[style];
+    time = 0;
+    beatCount = 0;
+
+    if (!animationId) {
+      animate();
+    }
+  }
+
+  function stopMusic() {
+    document.querySelectorAll('.music-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+
+    currentStyle = null;
+
+    // Réinitialiser les positions
+    robots.forEach(robot => {
+      robot.position.y = robot.baseY;
+      robot.rotation.set(0, 0, 0);
+    });
+  }
+
+  // Boucle d'animation
+  function animate() {
+    animationId = requestAnimationFrame(animate);
+
+    time += 16;
+
+    // Rotation de la caméra avec la souris
+    camera.position.x = Math.cos(mouseX * 0.0005) * 30;
+    camera.position.z = Math.sin(mouseX * 0.0005) * 30;
+    camera.position.y = 10 + mouseY * 0.01;
+    camera.lookAt(0, 5, 0);
+
+    if (currentStyle) {
+      const intensity = intensitySlider.value / 100;
+      const beat = (time / (60000 / currentStyle.bpm)) % currentStyle.bassPattern.length;
+      const beatIndex = Math.floor(beat);
+      const bassIntensity = currentStyle.bassPattern[beatIndex] * intensity * currentStyle.energy;
+
+      // Détecter un nouveau beat
+      if (beatIndex !== beatCount) {
+        beatCount = beatIndex;
+
+        // Flash de lumière sur le beat
+        if (bassIntensity > 0.8) {
+          scene.fog.color.setHex(currentStyle.colors[beatIndex % currentStyle.colors.length]);
+          setTimeout(() => {
+            scene.fog.color.setHex(0x000000);
+          }, 100);
+        }
+      }
+
+      animateRobots(bassIntensity, intensity, beatIndex);
+      animateLights(bassIntensity, intensity);
+      animateBars(bassIntensity, intensity);
+    }
+
+    animateParticles();
+
+    renderer.render(scene, camera);
+  }
+
+  // Gestion de la souris
+  function onMouseMove(event) {
+    mouseX = (event.clientX - window.innerWidth / 2) * 2;
+    mouseY = (event.clientY - window.innerHeight / 2) * 2;
+  }
+
+  // Redimensionnement
+  function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  // Initialisation
+  init();
+  animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magic Sets Explorer - Toutes les éditions MTG avec analyse d'investissement</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333333;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+        }
+
+        h1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 3em;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666666;
+            font-size: 1.2em;
+        }
+
+        .stats-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            color: #666666;
+            margin-top: 8px;
+            font-size: 14px;
+        }
+
+        .filters-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+        }
+
+        .filter-title {
+            color: #764ba2;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .filter-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            color: #666666;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        input, select {
+            padding: 10px 15px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            color: #333333;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        input::placeholder {
+            color: #999999;
+        }
+
+        button {
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #ff6ec4, #7873f5);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255, 110, 196, 0.3);
+        }
+
+        .quick-filters {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .quick-filter-btn {
+            padding: 8px 16px;
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 20px;
+            color: #666666;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .quick-filter-btn:hover {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .quick-filter-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .sets-container {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+        }
+
+        .view-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .view-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .view-btn {
+            padding: 8px 15px;
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            color: #666666;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .view-btn:hover {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+
+        .view-btn.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+
+        .sets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .sets-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .set-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .set-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        .set-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .set-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 1px solid #dee2e6;
+        }
+
+        .set-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .set-code {
+            color: #667eea;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .set-type {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #e7f3ff;
+            border-radius: 5px;
+            color: #4a90e2;
+            font-size: 12px;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .set-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            color: #666666;
+            font-size: 14px;
+        }
+
+        .info-value {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .investment-score {
+            margin-top: 15px;
+            padding: 10px;
+            background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
+            border-radius: 8px;
+            border: 1px solid #4caf50;
+        }
+
+        .score-label {
+            color: #2e7d32;
+            font-size: 12px;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .score-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .score-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .set-list-item {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 20px;
+            align-items: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .set-list-item:hover {
+            background: #f8f9fa;
+            transform: translateX(5px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.15);
+            border-color: #667eea;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666666;
+        }
+
+        .spinner {
+            border: 3px solid #e0e0e0;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 800px;
+            max-height: 85vh;
+            overflow-y: auto;
+            position: relative;
+            border: 2px solid #667eea;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .close-modal:hover {
+            color: #333;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .page-btn {
+            padding: 8px 12px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            color: #666666;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .page-btn:hover {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .page-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-color: transparent;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .sets-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-controls {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>🎴 Magic Sets Explorer</h1>
+        <p class="subtitle">Base de données complète de TOUTES les éditions Magic: The Gathering</p>
+    </header>
+
+    <div class="stats-panel">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalSets">0</div>
+                <div class="stat-label">Éditions totales</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="coreCount">0</div>
+                <div class="stat-label">Core Sets</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="expansionCount">0</div>
+                <div class="stat-label">Extensions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="mastersCount">0</div>
+                <div class="stat-label">Masters Sets</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="oldestYear">-</div>
+                <div class="stat-label">Plus ancienne</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="newestYear">-</div>
+                <div class="stat-label">Plus récente</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="filters-panel">
+        <h2 class="filter-title">🔍 Recherche de cartes</h2>
+
+        <div style="background: linear-gradient(135deg, #e3f2fd, #e8eaf6); padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 2px solid #2196f3;">
+            <h3 style="color: #1976d2; margin-bottom: 15px;">🎴 Rechercher une carte spécifique</h3>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="cardSearchInput" placeholder="Ex: Black Lotus, Lightning Bolt, Jace..." style="flex: 1; padding: 12px; font-size: 16px;">
+                <button onclick="searchSpecificCard()" style="padding: 12px 30px; background: linear-gradient(135deg, #2196f3, #1976d2); font-size: 16px;">
+                    🔍 Rechercher la carte
+                </button>
+            </div>
+            <div id="cardSearchResults" style="display: none;">
+                <!-- Les résultats de recherche de cartes apparaîtront ici -->
+            </div>
+        </div>
+
+        <h2 class="filter-title" style="margin-top: 25px;">📚 Filtres des éditions</h2>
+
+        <div class="filter-controls">
+            <div class="filter-group">
+                <label>Rechercher une édition</label>
+                <input type="text" id="searchInput" placeholder="Nom ou code de l'édition...">
+            </div>
+
+            <div class="filter-group">
+                <label>Type d'édition</label>
+                <select id="typeFilter">
+                    <option value="">Tous les types</option>
+                    <option value="core">Core Sets</option>
+                    <option value="expansion">Extensions</option>
+                    <option value="masters">Masters</option>
+                    <option value="draft_innovation">Draft Innovation</option>
+                    <option value="commander">Commander</option>
+                    <option value="starter">Starter</option>
+                    <option value="box">Box Sets</option>
+                    <option value="promo">Promo</option>
+                    <option value="funny">Un-sets</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Année de sortie</label>
+                <select id="yearFilter">
+                    <option value="">Toutes les années</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Trier par</label>
+                <select id="sortBy">
+                    <option value="released_desc">Date (récent → ancien)</option>
+                    <option value="released_asc">Date (ancien → récent)</option>
+                    <option value="name_asc">Nom (A → Z)</option>
+                    <option value="name_desc">Nom (Z → A)</option>
+                    <option value="cards_desc">Nombre de cartes</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="quick-filters">
+            <div class="quick-filter-btn" onclick="filterByCategory('reserved')">📜 Avec liste réservée</div>
+            <div class="quick-filter-btn" onclick="filterByCategory('foil')">✨ Avec foils</div>
+            <div class="quick-filter-btn" onclick="filterByCategory('digital')">💻 Digital uniquement</div>
+            <div class="quick-filter-btn" onclick="filterByCategory('paper')">📄 Papier uniquement</div>
+            <div class="quick-filter-btn" onclick="filterByCategory('vintage')">🏛️ Vintage (pre-2000)</div>
+            <div class="quick-filter-btn" onclick="filterByCategory('modern')">⚡ Modern légal</div>
+            <div class="quick-filter-btn" onclick="filterByCategory('standard')">🎯 Standard légal</div>
+            <div class="quick-filter-btn" onclick="filterByCategory('investment')">💰 Top investissement</div>
+        </div>
+    </div>
+
+    <div class="sets-container">
+        <div class="view-controls">
+            <h2 style="color: #764ba2;">📚 Toutes les éditions Magic</h2>
+            <div class="view-buttons">
+                <div class="view-btn active" onclick="setView('grid')">⚏ Grille</div>
+                <div class="view-btn" onclick="setView('list')">☰ Liste</div>
+                <div class="view-btn" onclick="setView('timeline')">📅 Timeline</div>
+            </div>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Chargement de toutes les éditions Magic...</p>
+        </div>
+
+        <div id="setsContainer" class="sets-grid">
+            <!-- Les éditions seront ajoutées ici -->
+        </div>
+
+        <div class="pagination" id="pagination">
+            <!-- Pagination sera ajoutée ici -->
+        </div>
+    </div>
+</div>
+
+<div id="setModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <div id="modalContent"></div>
+    </div>
+</div>
+
+<script>
+    // Configuration et variables globales
+    const API_BASE = 'https://api.scryfall.com';
+    let allSets = [];
+    let filteredSets = [];
+    let currentView = 'grid';
+    let currentPage = 1;
+    const setsPerPage = 24;
+    let searchedCards = [];
+
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAllSets();
+        setupEventListeners();
+    });
+
+    // Configuration des écouteurs d'événements
+    function setupEventListeners() {
+        document.getElementById('searchInput').addEventListener('input', filterSets);
+        document.getElementById('typeFilter').addEventListener('change', filterSets);
+        document.getElementById('yearFilter').addEventListener('change', filterSets);
+        document.getElementById('sortBy').addEventListener('change', sortSets);
+
+        // Recherche de carte avec Enter
+        document.getElementById('cardSearchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchSpecificCard();
+            }
+        });
+    }
+
+    // Rechercher une carte spécifique
+    async function searchSpecificCard() {
+        const searchTerm = document.getElementById('cardSearchInput').value.trim();
+        if (!searchTerm) {
+            alert('Veuillez entrer le nom d\'une carte');
+            return;
+        }
+
+        const resultsDiv = document.getElementById('cardSearchResults');
+        resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Recherche en cours...</p></div>';
+
+        try {
+            // Recherche de la carte
+            const response = await fetch(`${API_BASE}/cards/search?q=${encodeURIComponent(searchTerm)}&unique=prints&order=released`);
+            const data = await response.json();
+
+            if (data.object === 'error') {
+                resultsDiv.innerHTML = `<p style="color: #d32f2f; padding: 20px;">❌ Aucune carte trouvée pour "${searchTerm}"</p>`;
+                return;
+            }
+
+            searchedCards = data.data;
+            displayCardResults(searchedCards);
+
+        } catch (error) {
+            resultsDiv.innerHTML = `<p style="color: #d32f2f; padding: 20px;">❌ Erreur lors de la recherche: ${error.message}</p>`;
+        }
+    }
+
+    // Afficher les résultats de recherche de cartes
+    function displayCardResults(cards) {
+        const resultsDiv = document.getElementById('cardSearchResults');
+
+        // Grouper les cartes par nom unique
+        const uniqueCards = {};
+        cards.forEach(card => {
+            if (!uniqueCards[card.name] ||
+                (card.prices?.usd && parseFloat(card.prices.usd) < parseFloat(uniqueCards[card.name].prices?.usd || 999999))) {
+                uniqueCards[card.name] = card;
+            }
+        });
+
+        const uniqueCardsArray = Object.values(uniqueCards).slice(0, 10);
+
+        resultsDiv.innerHTML = `
+                <h4 style="color: #1976d2; margin-bottom: 15px;">
+                    📊 ${cards.length} impressions trouvées (${uniqueCardsArray.length} cartes uniques)
+                </h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
+                    ${uniqueCardsArray.map(card => createCardSearchResult(card)).join('')}
+                </div>
+            `;
+
+        // Ajouter les événements click
+        uniqueCardsArray.forEach(card => {
+            const element = document.getElementById(`card-${card.id}`);
+            if (element) {
+                element.onclick = () => showCardDetails(card);
+            }
+        });
+    }
+
+    // Créer une carte de résultat de recherche
+    function createCardSearchResult(card) {
+        const usdPrice = parseFloat(card.prices?.usd || 0);
+        const eurPrice = (usdPrice * 0.92).toFixed(2);
+        const foilPrice = card.prices?.usd_foil ? (parseFloat(card.prices.usd_foil) * 0.92).toFixed(2) : null;
+
+        // Calculer le score d'investissement de la carte
+        const investmentInfo = calculateCardInvestment(card);
+
+        return `
+                <div id="card-${card.id}" style="
+                    background: white;
+                    border: 2px solid #e0e0e0;
+                    border-radius: 12px;
+                    padding: 15px;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.15)'; this.style.borderColor='#2196f3';"
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'; this.style.borderColor='#e0e0e0';">
+
+                    <div style="font-weight: bold; color: #1976d2; margin-bottom: 8px; font-size: 16px;">
+                        ${card.name}
+                    </div>
+
+                    <div style="color: #666; font-size: 13px; margin-bottom: 10px;">
+                        ${card.set_name} (${card.set.toUpperCase()})
+                    </div>
+
+                    <div style="background: ${investmentInfo.color}; padding: 5px 8px; border-radius: 5px; margin-bottom: 10px; font-size: 12px; color: white; font-weight: 600;">
+                        ${investmentInfo.label}
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="color: #2e7d32; font-size: 20px; font-weight: bold;">
+                                ~${eurPrice}€
+                            </div>
+                            ${foilPrice ? `<div style="color: #888; font-size: 12px;">Foil: ~${foilPrice}€</div>` : ''}
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="color: #f57c00; font-size: 12px;">
+                                ${card.rarity === 'mythic' ? '🟠 Mythique' :
+            card.rarity === 'rare' ? '🟡 Rare' :
+                card.rarity === 'uncommon' ? '⚪ Peu commune' :
+                    '⚫ Commune'}
+                            </div>
+                        </div>
+                    </div>
+
+                    ${card.reserved ? '<div style="color: #d32f2f; font-size: 11px; margin-top: 8px; font-weight: bold;">📜 LISTE RÉSERVÉE</div>' : ''}
+                </div>
+            `;
+    }
+
+    // Calculer l'investissement d'une carte
+    function calculateCardInvestment(card) {
+        const price = parseFloat(card.prices?.usd || 0);
+        const age = 2025 - new Date(card.released_at).getFullYear();
+
+        if (card.reserved) {
+            return { label: '🔥 INVESTISSEMENT PARFAIT', color: 'linear-gradient(135deg, #ff6b6b, #ff8787)' };
+        }
+        if (price < 5 && (card.rarity === 'rare' || card.rarity === 'mythic') && age > 5) {
+            return { label: '💎 EXCELLENTE OPPORTUNITÉ', color: 'linear-gradient(135deg, #feca57, #ff9ff3)' };
+        }
+        if (price < 10 && age > 10) {
+            return { label: '✅ BON INVESTISSEMENT', color: 'linear-gradient(135deg, #48dbfb, #0abde3)' };
+        }
+        if (price > 50) {
+            return { label: '⚠️ INVESTISSEMENT ÉLEVÉ', color: 'linear-gradient(135deg, #ff9800, #ff5722)' };
+        }
+        return { label: '📊 À SURVEILLER', color: 'linear-gradient(135deg, #9e9e9e, #757575)' };
+    }
+
+    // Afficher les détails d'une carte
+    async function showCardDetails(card) {
+        const modal = document.getElementById('setModal');
+        const content = document.getElementById('modalContent');
+
+        const usdPrice = parseFloat(card.prices?.usd || 0);
+        const eurPrice = (usdPrice * 0.92).toFixed(2);
+        const foilPrice = card.prices?.usd_foil ? (parseFloat(card.prices.usd_foil) * 0.92).toFixed(2) : null;
+
+        // Rechercher toutes les impressions de cette carte
+        let allPrintings = [];
+        try {
+            const response = await fetch(`${API_BASE}/cards/search?q=!"${card.name}"&unique=prints&order=released`);
+            const data = await response.json();
+            if (data.data) {
+                allPrintings = data.data;
+            }
+        } catch (error) {
+            console.error('Erreur lors de la recherche des impressions:', error);
+        }
+
+        const investmentInfo = calculateCardInvestment(card);
+
+        content.innerHTML = `
+                <h2 style="color: #1976d2; margin-bottom: 20px;">
+                    ${card.name}
+                </h2>
+
+                <div style="text-align: center; margin: 20px 0;">
+                    <img src="${card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || ''}"
+                         style="width: 100%; max-width: 350px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                </div>
+
+                <div style="display: grid; gap: 15px; color: #333333; margin-top: 25px;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Édition actuelle:</span>
+                        <span style="font-weight: 600;">${card.set_name} (${card.set.toUpperCase()})</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Type:</span>
+                        <span style="font-weight: 600;">${card.type_line}</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Rareté:</span>
+                        <span style="font-weight: 600;">${card.rarity.charAt(0).toUpperCase() + card.rarity.slice(1)}</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Coût de mana:</span>
+                        <span style="font-weight: 600;">${card.mana_cost || 'N/A'}</span>
+                    </div>
+
+                    ${card.reserved ? `
+                        <div style="display: flex; justify-content: space-between; background: #ffebee; padding: 10px; border-radius: 8px;">
+                            <span>📜 Liste réservée:</span>
+                            <span style="font-weight: 600; color: #d32f2f;">NE SERA JAMAIS RÉIMPRIMÉE</span>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <div style="margin-top: 25px; padding: 20px; background: linear-gradient(135deg, #e8f5e9, #f1f8e9); border-radius: 10px; border: 1px solid #4caf50;">
+                    <h3 style="color: #2e7d32; margin-bottom: 15px;">
+                        💰 Prix et investissement
+                    </h3>
+
+                    <div style="display: grid; gap: 10px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Prix normal:</span>
+                            <span style="font-weight: bold; color: #2e7d32; font-size: 20px;">~${eurPrice}€</span>
+                        </div>
+                        ${foilPrice ? `
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Prix foil:</span>
+                                <span style="font-weight: bold; color: #ff9800; font-size: 20px;">~${foilPrice}€</span>
+                            </div>
+                        ` : ''}
+
+                        <div style="margin-top: 10px; padding: 10px; background: ${investmentInfo.color}; border-radius: 8px; text-align: center; color: white; font-weight: bold;">
+                            ${investmentInfo.label}
+                        </div>
+                    </div>
+                </div>
+
+                ${allPrintings.length > 1 ? `
+                    <div style="margin-top: 25px;">
+                        <h3 style="color: #1976d2; margin-bottom: 15px;">
+                            📚 Toutes les impressions (${allPrintings.length})
+                        </h3>
+                        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px;">
+                            ${allPrintings.map(print => {
+            const printPrice = print.prices?.usd ? (parseFloat(print.prices.usd) * 0.92).toFixed(2) : 'N/A';
+            return `
+                                    <div style="padding: 8px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between;">
+                                        <span>${print.set_name} (${new Date(print.released_at).getFullYear()})</span>
+                                        <span style="font-weight: 600; color: #2e7d32;">~${printPrice}€</span>
+                                    </div>
+                                `;
+        }).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+
+                <div style="margin-top: 25px;">
+                    <h3 style="color: #1976d2; margin-bottom: 15px;">🔗 Acheter cette carte</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <a href="${card.purchase_uris?.cardmarket || 'https://www.cardmarket.com/'}"
+                           target="_blank"
+                           style="padding: 10px 20px; background: linear-gradient(135deg, #2196f3, #1976d2); color: white; text-decoration: none; border-radius: 8px;">
+                            CardMarket EU
+                        </a>
+                        <a href="${card.purchase_uris?.tcgplayer || '#'}"
+                           target="_blank"
+                           style="padding: 10px 20px; background: linear-gradient(135deg, #4caf50, #8bc34a); color: white; text-decoration: none; border-radius: 8px;">
+                            TCGPlayer US
+                        </a>
+                        <a href="${card.scryfall_uri}"
+                           target="_blank"
+                           style="padding: 10px 20px; background: linear-gradient(135deg, #ff9800, #ff5722); color: white; text-decoration: none; border-radius: 8px;">
+                            Voir sur Scryfall
+                        </a>
+                    </div>
+                </div>
+            `;
+
+        modal.style.display = 'flex';
+    }
+
+    // Charger toutes les éditions
+    async function loadAllSets() {
+        showLoading(true);
+
+        try {
+            const response = await fetch(`${API_BASE}/sets`);
+            const data = await response.json();
+
+            allSets = data.data;
+
+            // Enrichir les données avec des scores d'investissement
+            allSets = allSets.map(set => ({
+                ...set,
+                investmentScore: calculateInvestmentScore(set)
+            }));
+
+            // Trier par date de sortie (plus récent en premier)
+            allSets.sort((a, b) => new Date(b.released_at || 0) - new Date(a.released_at || 0));
+
+            filteredSets = [...allSets];
+
+            // Remplir le filtre des années
+            populateYearFilter();
+
+            // Mettre à jour les statistiques
+            updateStatistics();
+
+            // Afficher les éditions
+            displaySets();
+
+        } catch (error) {
+            console.error('Erreur lors du chargement des éditions:', error);
+            document.getElementById('setsContainer').innerHTML =
+                '<p style="color: #ff6b6b; text-align: center;">Erreur lors du chargement des données</p>';
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // Calculer le score d'investissement d'une édition
+    function calculateInvestmentScore(set) {
+        let score = 0;
+
+        // Âge de l'édition
+        const releaseYear = new Date(set.released_at).getFullYear();
+        const age = 2025 - releaseYear;
+        if (age > 20) score += 30;
+        else if (age > 10) score += 20;
+        else if (age > 5) score += 10;
+
+        // Type d'édition
+        if (set.set_type === 'masters') score += 25;
+        if (set.set_type === 'core' && age > 10) score += 15;
+        if (set.set_type === 'expansion' && age > 15) score += 20;
+
+        // Éditions spéciales
+        if (set.name.toLowerCase().includes('reserved') ||
+            set.name.toLowerCase().includes('alpha') ||
+            set.name.toLowerCase().includes('beta') ||
+            set.name.toLowerCase().includes('unlimited')) {
+            score += 40;
+        }
+
+        // Nombre de cartes (éditions limitées)
+        if (set.card_count < 100) score += 10;
+
+        // Digital only = moins d'intérêt pour l'investissement
+        if (set.digital) score -= 20;
+
+        // Foil only sets
+        if (set.foil_only) score += 15;
+
+        return Math.max(0, Math.min(100, score));
+    }
+
+    // Remplir le filtre des années
+    function populateYearFilter() {
+        const years = [...new Set(allSets
+            .map(set => new Date(set.released_at).getFullYear())
+            .filter(year => year > 1992)
+        )].sort((a, b) => b - a);
+
+        const yearFilter = document.getElementById('yearFilter');
+        years.forEach(year => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearFilter.appendChild(option);
+        });
+    }
+
+    // Mettre à jour les statistiques
+    function updateStatistics() {
+        const coreCount = allSets.filter(s => s.set_type === 'core').length;
+        const expansionCount = allSets.filter(s => s.set_type === 'expansion').length;
+        const mastersCount = allSets.filter(s => s.set_type === 'masters').length;
+
+        const years = allSets
+            .map(s => new Date(s.released_at).getFullYear())
+            .filter(y => y > 1992);
+
+        document.getElementById('totalSets').textContent = allSets.length;
+        document.getElementById('coreCount').textContent = coreCount;
+        document.getElementById('expansionCount').textContent = expansionCount;
+        document.getElementById('mastersCount').textContent = mastersCount;
+        document.getElementById('oldestYear').textContent = Math.min(...years);
+        document.getElementById('newestYear').textContent = Math.max(...years);
+    }
+
+    // Afficher les éditions
+    function displaySets() {
+        const container = document.getElementById('setsContainer');
+        container.className = currentView === 'list' ? 'sets-list' : 'sets-grid';
+
+        // Pagination
+        const startIndex = (currentPage - 1) * setsPerPage;
+        const endIndex = startIndex + setsPerPage;
+        const setsToDisplay = filteredSets.slice(startIndex, endIndex);
+
+        container.innerHTML = '';
+
+        if (currentView === 'timeline') {
+            displayTimeline();
+        } else {
+            setsToDisplay.forEach(set => {
+                if (currentView === 'list') {
+                    container.appendChild(createSetListItem(set));
+                } else {
+                    container.appendChild(createSetCard(set));
+                }
+            });
+        }
+
+        // Afficher la pagination
+        displayPagination();
+    }
+
+    // Créer une carte d'édition
+    function createSetCard(set) {
+        const div = document.createElement('div');
+        div.className = 'set-card';
+
+        const releaseDate = new Date(set.released_at);
+        const formattedDate = releaseDate.toLocaleDateString('fr-FR', {
+            year: 'numeric',
+            month: 'short'
+        });
+
+        const setIcon = getSetIcon(set.set_type);
+        const investmentColor = getInvestmentColor(set.investmentScore);
+
+        div.innerHTML = `
+                <div class="set-header">
+                    <div>
+                        <div class="set-name">${set.name}</div>
+                        <div class="set-code">${set.code.toUpperCase()}</div>
+                    </div>
+                    <div class="set-icon">${setIcon}</div>
+                </div>
+
+                <div class="set-type">${formatSetType(set.set_type)}</div>
+
+                <div class="set-info">
+                    <div class="info-row">
+                        <span>Date de sortie</span>
+                        <span class="info-value">${formattedDate}</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Nombre de cartes</span>
+                        <span class="info-value">${set.card_count || 'N/A'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Format</span>
+                        <span class="info-value">${set.digital ? '💻 Digital' : '📄 Papier'}</span>
+                    </div>
+                    ${set.foil_only ? `
+                        <div class="info-row">
+                            <span>Spécial</span>
+                            <span class="info-value">✨ Foil uniquement</span>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <div class="investment-score">
+                    <div class="score-label">Score d'investissement: ${set.investmentScore}/100</div>
+                    <div class="score-bar">
+                        <div class="score-fill" style="width: ${set.investmentScore}%; background: ${investmentColor};"></div>
+                    </div>
+                </div>
+            `;
+
+        div.onclick = () => showSetDetails(set);
+        return div;
+    }
+
+    // Créer un élément de liste
+    function createSetListItem(set) {
+        const div = document.createElement('div');
+        div.className = 'set-list-item';
+
+        const releaseDate = new Date(set.released_at);
+        const formattedDate = releaseDate.toLocaleDateString('fr-FR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        const setIcon = getSetIcon(set.set_type);
+
+        div.innerHTML = `
+                <div class="set-icon" style="font-size: 32px; width: 60px; height: 60px;">
+                    ${setIcon}
+                </div>
+
+                <div>
+                    <div class="set-name" style="font-size: 20px; margin-bottom: 8px;">
+                        ${set.name} <span style="color: #ff6ec4;">(${set.code.toUpperCase()})</span>
+                    </div>
+                    <div style="color: #b0b0d0;">
+                        ${formatSetType(set.set_type)} • ${formattedDate} •
+                        ${set.card_count || 'N/A'} cartes •
+                        ${set.digital ? 'Digital' : 'Papier'}
+                        ${set.foil_only ? ' • ✨ Foil uniquement' : ''}
+                    </div>
+                </div>
+
+                <div style="text-align: right;">
+                    <div style="color: #00e676; font-size: 24px; font-weight: bold;">
+                        ${set.investmentScore}%
+                    </div>
+                    <div style="color: #b0b0d0; font-size: 12px;">
+                        Score invest.
+                    </div>
+                </div>
+            `;
+
+        div.onclick = () => showSetDetails(set);
+        return div;
+    }
+
+    // Afficher la timeline
+    function displayTimeline() {
+        const container = document.getElementById('setsContainer');
+        container.className = '';
+        container.innerHTML = '<h3 style="color: #ff6ec4; margin-bottom: 20px;">📅 Timeline des éditions Magic</h3>';
+
+        // Grouper par année
+        const setsByYear = {};
+        filteredSets.forEach(set => {
+            const year = new Date(set.released_at).getFullYear();
+            if (!setsByYear[year]) setsByYear[year] = [];
+            setsByYear[year].push(set);
+        });
+
+        // Trier les années
+        const years = Object.keys(setsByYear).sort((a, b) => b - a);
+
+        years.forEach(year => {
+            const yearDiv = document.createElement('div');
+            yearDiv.style.marginBottom = '30px';
+
+            yearDiv.innerHTML = `
+                    <h4 style="color: #7873f5; font-size: 24px; margin-bottom: 15px;">
+                        ${year} (${setsByYear[year].length} éditions)
+                    </h4>
+                `;
+
+            const yearGrid = document.createElement('div');
+            yearGrid.className = 'sets-grid';
+
+            setsByYear[year].forEach(set => {
+                yearGrid.appendChild(createSetCard(set));
+            });
+
+            yearDiv.appendChild(yearGrid);
+            container.appendChild(yearDiv);
+        });
+    }
+
+    // Afficher les détails d'une édition
+    async function showSetDetails(set) {
+        const modal = document.getElementById('setModal');
+        const content = document.getElementById('modalContent');
+
+        const releaseDate = new Date(set.released_at);
+        const formattedDate = releaseDate.toLocaleDateString('fr-FR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        content.innerHTML = `
+                <h2 style="color: #ff6ec4; margin-bottom: 20px;">
+                    ${set.name} (${set.code.toUpperCase()})
+                </h2>
+
+                ${set.icon_svg_uri ? `
+                    <div style="text-align: center; margin: 20px 0;">
+                        <img src="${set.icon_svg_uri}" style="width: 100px; height: 100px; filter: invert(1);">
+                    </div>
+                ` : ''}
+
+                <div style="display: grid; gap: 15px; color: #e0e0e0;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Type d'édition:</span>
+                        <span style="color: #7873f5;">${formatSetType(set.set_type)}</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Date de sortie:</span>
+                        <span>${formattedDate}</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Nombre de cartes:</span>
+                        <span>${set.card_count || 'N/A'}</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Format:</span>
+                        <span>${set.digital ? '💻 Digital uniquement' : '📄 Papier'}</span>
+                    </div>
+
+                    ${set.foil_only ? `
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Particularité:</span>
+                            <span>✨ Foil uniquement</span>
+                        </div>
+                    ` : ''}
+
+                    ${set.block ? `
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Bloc:</span>
+                            <span>${set.block}</span>
+                        </div>
+                    ` : ''}
+
+                    ${set.parent_set_code ? `
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Édition parente:</span>
+                            <span>${set.parent_set_code.toUpperCase()}</span>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <div style="margin-top: 25px; padding: 20px; background: rgba(0, 230, 118, 0.1); border-radius: 10px;">
+                    <h3 style="color: #00e676; margin-bottom: 15px;">
+                        💰 Analyse d'investissement
+                    </h3>
+
+                    <div class="score-bar" style="margin-bottom: 15px;">
+                        <div class="score-fill" style="width: ${set.investmentScore}%; background: ${getInvestmentColor(set.investmentScore)};"></div>
+                    </div>
+
+                    <p style="color: #e0e0e0; line-height: 1.6;">
+                        Score: <strong>${set.investmentScore}/100</strong><br>
+                        ${getInvestmentAnalysis(set)}
+                    </p>
+                </div>
+
+                <div style="margin-top: 25px;">
+                    <h3 style="color: #ff6ec4; margin-bottom: 15px;">🔗 Liens utiles</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <a href="${set.scryfall_uri}" target="_blank"
+                           style="padding: 10px 20px; background: linear-gradient(135deg, #ff6ec4, #7873f5); color: white; text-decoration: none; border-radius: 8px;">
+                            Voir sur Scryfall
+                        </a>
+                        ${set.tcgplayer_id ? `
+                            <a href="https://www.tcgplayer.com/search/magic/product?productLineName=magic&setName=${encodeURIComponent(set.name)}"
+                               target="_blank"
+                               style="padding: 10px 20px; background: linear-gradient(135deg, #00e676, #00c853); color: white; text-decoration: none; border-radius: 8px;">
+                                Prix TCGPlayer
+                            </a>
+                        ` : ''}
+                        <button onclick="searchCardsFromSet('${set.code}')"
+                                style="padding: 10px 20px;">
+                            🔍 Voir les cartes
+                        </button>
+                    </div>
+                </div>
+            `;
+
+        modal.style.display = 'flex';
+    }
+
+    // Rechercher les cartes d'une édition
+    async function searchCardsFromSet(setCode) {
+        window.open(`https://scryfall.com/sets/${setCode}`, '_blank');
+    }
+
+    // Obtenir l'analyse d'investissement
+    function getInvestmentAnalysis(set) {
+        const score = set.investmentScore;
+        const year = new Date(set.released_at).getFullYear();
+        const age = 2025 - year;
+
+        let analysis = [];
+
+        if (score >= 80) {
+            analysis.push('🔥 Excellente opportunité d\'investissement');
+        } else if (score >= 60) {
+            analysis.push('✅ Très bon potentiel d\'investissement');
+        } else if (score >= 40) {
+            analysis.push('📊 Potentiel d\'investissement modéré');
+        } else if (score >= 20) {
+            analysis.push('⏸️ Investissement à surveiller');
+        } else {
+            analysis.push('❌ Faible intérêt pour l\'investissement');
+        }
+
+        if (age > 20) {
+            analysis.push('• Édition très ancienne (20+ ans) - Rareté croissante');
+        } else if (age > 10) {
+            analysis.push('• Édition ancienne (10+ ans) - Offre limitée');
+        }
+
+        if (set.set_type === 'masters') {
+            analysis.push('• Masters set - Reprints de valeur, tirage limité');
+        }
+
+        if (set.foil_only) {
+            analysis.push('• Foil uniquement - Premium collector');
+        }
+
+        if (set.digital) {
+            analysis.push('• Digital uniquement - Pas de valeur physique');
+        }
+
+        if (set.card_count < 100) {
+            analysis.push('• Édition limitée - Peu de cartes disponibles');
+        }
+
+        return analysis.join('<br>');
+    }
+
+    // Filtrer les éditions
+    function filterSets() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const typeFilter = document.getElementById('typeFilter').value;
+        const yearFilter = document.getElementById('yearFilter').value;
+
+        filteredSets = allSets.filter(set => {
+            // Recherche textuelle
+            if (searchTerm && !set.name.toLowerCase().includes(searchTerm) &&
+                !set.code.toLowerCase().includes(searchTerm)) {
+                return false;
+            }
+
+            // Filtre par type
+            if (typeFilter && set.set_type !== typeFilter) {
+                return false;
+            }
+
+            // Filtre par année
+            if (yearFilter && new Date(set.released_at).getFullYear() !== parseInt(yearFilter)) {
+                return false;
+            }
+
+            return true;
+        });
+
+        currentPage = 1;
+        displaySets();
+    }
+
+    // Filtrer par catégorie
+    function filterByCategory(category) {
+        // Toggle active state
+        event.target.classList.toggle('active');
+
+        switch(category) {
+            case 'reserved':
+                filteredSets = allSets.filter(s =>
+                    s.name.toLowerCase().includes('alpha') ||
+                    s.name.toLowerCase().includes('beta') ||
+                    s.name.toLowerCase().includes('unlimited') ||
+                    s.name.toLowerCase().includes('revised') ||
+                    s.name.toLowerCase().includes('legends') ||
+                    s.name.toLowerCase().includes('antiquities') ||
+                    s.name.toLowerCase().includes('arabian')
+                );
+                break;
+            case 'foil':
+                filteredSets = allSets.filter(s => s.foil_only);
+                break;
+            case 'digital':
+                filteredSets = allSets.filter(s => s.digital);
+                break;
+            case 'paper':
+                filteredSets = allSets.filter(s => !s.digital);
+                break;
+            case 'vintage':
+                filteredSets = allSets.filter(s => new Date(s.released_at).getFullYear() < 2000);
+                break;
+            case 'modern':
+                filteredSets = allSets.filter(s => {
+                    const year = new Date(s.released_at).getFullYear();
+                    return year >= 2003;
+                });
+                break;
+            case 'standard':
+                filteredSets = allSets.filter(s => {
+                    const year = new Date(s.released_at).getFullYear();
+                    return year >= 2023;
+                });
+                break;
+            case 'investment':
+                filteredSets = allSets.filter(s => s.investmentScore >= 60);
+                break;
+            default:
+                filteredSets = [...allSets];
+        }
+
+        currentPage = 1;
+        displaySets();
+    }
+
+    // Trier les éditions
+    function sortSets() {
+        const sortBy = document.getElementById('sortBy').value;
+
+        switch(sortBy) {
+            case 'released_desc':
+                filteredSets.sort((a, b) => new Date(b.released_at || 0) - new Date(a.released_at || 0));
+                break;
+            case 'released_asc':
+                filteredSets.sort((a, b) => new Date(a.released_at || 0) - new Date(b.released_at || 0));
+                break;
+            case 'name_asc':
+                filteredSets.sort((a, b) => a.name.localeCompare(b.name));
+                break;
+            case 'name_desc':
+                filteredSets.sort((a, b) => b.name.localeCompare(a.name));
+                break;
+            case 'cards_desc':
+                filteredSets.sort((a, b) => (b.card_count || 0) - (a.card_count || 0));
+                break;
+        }
+
+        displaySets();
+    }
+
+    // Afficher la pagination
+    function displayPagination() {
+        const pagination = document.getElementById('pagination');
+        const totalPages = Math.ceil(filteredSets.length / setsPerPage);
+
+        if (totalPages <= 1) {
+            pagination.innerHTML = '';
+            return;
+        }
+
+        pagination.innerHTML = '';
+
+        // Bouton précédent
+        if (currentPage > 1) {
+            const prevBtn = document.createElement('div');
+            prevBtn.className = 'page-btn';
+            prevBtn.textContent = '← Précédent';
+            prevBtn.onclick = () => {
+                currentPage--;
+                displaySets();
+            };
+            pagination.appendChild(prevBtn);
+        }
+
+        // Numéros de page
+        const maxButtons = 7;
+        let startPage = Math.max(1, currentPage - 3);
+        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+        if (endPage - startPage < maxButtons - 1) {
+            startPage = Math.max(1, endPage - maxButtons + 1);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            const pageBtn = document.createElement('div');
+            pageBtn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+            pageBtn.textContent = i;
+            pageBtn.onclick = () => {
+                currentPage = i;
+                displaySets();
+            };
+            pagination.appendChild(pageBtn);
+        }
+
+        // Bouton suivant
+        if (currentPage < totalPages) {
+            const nextBtn = document.createElement('div');
+            nextBtn.className = 'page-btn';
+            nextBtn.textContent = 'Suivant →';
+            nextBtn.onclick = () => {
+                currentPage++;
+                displaySets();
+            };
+            pagination.appendChild(nextBtn);
+        }
+    }
+
+    // Changer la vue
+    function setView(view) {
+        currentView = view;
+
+        // Mettre à jour les boutons
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+
+        displaySets();
+    }
+
+    // Utilitaires
+    function getSetIcon(setType) {
+        const icons = {
+            'core': '🎯',
+            'expansion': '🗡️',
+            'masters': '👑',
+            'draft_innovation': '🎲',
+            'commander': '⚔️',
+            'starter': '📚',
+            'box': '📦',
+            'promo': '🌟',
+            'funny': '🃏',
+            'memorabilia': '🏆',
+            'token': '🪙',
+            'default': '🎴'
+        };
+        return icons[setType] || icons.default;
+    }
+
+    function formatSetType(type) {
+        const types = {
+            'core': 'Core Set',
+            'expansion': 'Extension',
+            'masters': 'Masters',
+            'draft_innovation': 'Draft Innovation',
+            'commander': 'Commander',
+            'starter': 'Starter',
+            'box': 'Box Set',
+            'promo': 'Promo',
+            'funny': 'Un-Set',
+            'memorabilia': 'Memorabilia',
+            'token': 'Token',
+            'alchemy': 'Alchemy',
+            'arsenal': 'Arsenal',
+            'from_the_vault': 'From the Vault',
+            'masterpiece': 'Masterpiece',
+            'planechase': 'Planechase',
+            'premium_deck': 'Premium Deck',
+            'spellbook': 'Spellbook',
+            'treasure_chest': 'Treasure Chest',
+            'vanguard': 'Vanguard'
+        };
+        return types[type] || type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ');
+    }
+
+    function getInvestmentColor(score) {
+        if (score >= 80) return 'linear-gradient(90deg, #ff6b6b, #ff8787)';
+        if (score >= 60) return 'linear-gradient(90deg, #feca57, #ff9ff3)';
+        if (score >= 40) return 'linear-gradient(90deg, #48dbfb, #0abde3)';
+        if (score >= 20) return 'linear-gradient(90deg, #00d2d3, #01a3a4)';
+        return 'linear-gradient(90deg, #b0b0d0, #888)';
+    }
+
+    function showLoading(show) {
+        document.getElementById('loading').style.display = show ? 'block' : 'none';
+    }
+
+    function closeModal() {
+        document.getElementById('setModal').style.display = 'none';
+    }
+
+    // Fermer la modal en cliquant en dehors
+    window.onclick = function(event) {
+        const modal = document.getElementById('setModal');
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    }
+</script>
+</body>
+</html>

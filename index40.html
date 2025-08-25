@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StopClope Pro - Suivi Anti-Tabac</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #667eea;
+      --secondary: #764ba2;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --dark: #1f2937;
+      --light: #f3f4f6;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      min-height: 100vh;
+      padding: 10px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: white;
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .logo {
+      font-size: 1.8em;
+      font-weight: bold;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .stats-badges {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .stat-badge {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      padding: 10px 20px;
+      border-radius: 25px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .quick-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: 15px;
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+      border-radius: 10px;
+    }
+
+    .stat-value {
+      font-size: 2em;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .stat-label {
+      color: #666;
+      font-size: 0.9em;
+      margin-top: 5px;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+
+    .card-title {
+      font-size: 1.3em;
+      font-weight: 600;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--light);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .input-group {
+      margin-bottom: 15px;
+    }
+
+    .input-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #555;
+      font-weight: 500;
+    }
+
+    .input-group input,
+    .input-group select {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1em;
+    }
+
+    .input-group input:focus,
+    .input-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .btn {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: transform 0.3s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: #6b7280;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+    }
+
+    .btn-group {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .challenge-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .challenge-item {
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: transform 0.3s ease;
+      cursor: pointer;
+    }
+
+    .challenge-item:hover {
+      transform: translateX(5px);
+      background: #e9ecef;
+    }
+
+    .challenge-item.completed {
+      background: #d4edda;
+      border: 2px solid var(--success);
+    }
+
+    .challenge-info {
+      flex: 1;
+    }
+
+    .challenge-name {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .challenge-desc {
+      font-size: 0.9em;
+      color: #666;
+    }
+
+    .challenge-points {
+      background: #ffd700;
+      color: #333;
+      padding: 5px 10px;
+      border-radius: 15px;
+      font-weight: bold;
+    }
+
+    .timeline {
+      display: flex;
+      gap: 5px;
+      overflow-x: auto;
+      padding: 10px 0;
+      margin-top: 15px;
+    }
+
+    .timeline-day {
+      min-width: 35px;
+      height: 35px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8em;
+      font-weight: 600;
+      color: white;
+    }
+
+    .timeline-day.low {
+      background: var(--success);
+    }
+
+    .timeline-day.medium {
+      background: var(--warning);
+    }
+
+    .timeline-day.high {
+      background: var(--danger);
+    }
+
+    .timeline-day.zero {
+      background: var(--secondary);
+    }
+
+    .health-benefits {
+      display: grid;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .benefit-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .benefit-item.unlocked {
+      background: #d4edda;
+      border: 1px solid var(--success);
+    }
+
+    .chart-container {
+      position: relative;
+      height: 250px;
+      margin-top: 20px;
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      display: none;
+      animation: slideIn 0.5s ease;
+      z-index: 1000;
+      max-width: 300px;
+    }
+
+    .notification.success {
+      border-left: 4px solid var(--success);
+    }
+
+    .notification.warning {
+      border-left: 4px solid var(--warning);
+    }
+
+    .notification.danger {
+      border-left: 4px solid var(--danger);
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .btn-group {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      🚭 StopClope Pro
+    </div>
+    <div class="stats-badges">
+      <div class="stat-badge">
+        <span>🏆</span>
+        <span id="totalPoints">0 pts</span>
+      </div>
+      <div class="stat-badge" style="background: linear-gradient(135deg, var(--success), #059669);">
+        <span>🔥</span>
+        <span id="currentStreak">0 jours</span>
+      </div>
+      <div class="stat-badge" style="background: linear-gradient(135deg, var(--warning), #d97706);">
+        <span>💰</span>
+        <span id="moneySaved">0€</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistiques rapides -->
+  <div class="quick-stats">
+    <div class="stat-item">
+      <div class="stat-value" id="todayCount">0</div>
+      <div class="stat-label">Aujourd'hui</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="weekAvg">0</div>
+      <div class="stat-label">Moyenne 7j</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="monthTotal">0</div>
+      <div class="stat-label">Total mois</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="reduction">0%</div>
+      <div class="stat-label">Réduction</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="daysTracked">0</div>
+      <div class="stat-label">Jours suivis</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="bestDay">-</div>
+      <div class="stat-label">Record</div>
+    </div>
+  </div>
+
+  <!-- Dashboard Grid -->
+  <div class="dashboard-grid">
+    <!-- Enregistrement -->
+    <div class="card">
+      <h2 class="card-title">
+        <span>📝</span>
+        <span>Enregistrement quotidien</span>
+      </h2>
+
+      <div class="input-group">
+        <label for="cigaretteCount">Nombre de cigarettes</label>
+        <input type="number" id="cigaretteCount" min="0" max="100" placeholder="0">
+      </div>
+
+      <div class="input-group">
+        <label for="date">Date</label>
+        <input type="date" id="date">
+      </div>
+
+      <div class="input-group">
+        <label for="mood">Humeur</label>
+        <select id="mood">
+          <option value="😊">😊 Excellent</option>
+          <option value="🙂">🙂 Bien</option>
+          <option value="😐">😐 Neutre</option>
+          <option value="😔">😔 Difficile</option>
+          <option value="😤">😤 Très difficile</option>
+        </select>
+      </div>
+
+      <button class="btn" onclick="app.addConsumption()">
+        💾 Enregistrer
+      </button>
+    </div>
+
+    <!-- Graphique évolution -->
+    <div class="card">
+      <h2 class="card-title">
+        <span>📈</span>
+        <span>Évolution 30 jours</span>
+      </h2>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding: 10px; background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.1)); border-radius: 8px;">
+        <div style="text-align: center;">
+          <div style="font-size: 0.9em; color: #666;">Dépensé (30j)</div>
+          <div style="font-size: 1.5em; font-weight: bold; color: var(--danger);" id="monthSpent">0€</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 0.9em; color: #666;">Économisé (30j)</div>
+          <div style="font-size: 1.5em; font-weight: bold; color: var(--success);" id="monthSaved">0€</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 0.9em; color: #666;">Coût/jour moy.</div>
+          <div style="font-size: 1.5em; font-weight: bold; color: var(--primary);" id="dailyCost">0€</div>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="evolutionChart"></canvas>
+      </div>
+      <div class="timeline" id="timeline"></div>
+    </div>
+
+    <!-- Défis -->
+    <div class="card">
+      <h2 class="card-title">
+        <span>🎯</span>
+        <span>Défis</span>
+      </h2>
+      <div class="challenge-list" id="challengesList"></div>
+    </div>
+
+    <!-- Graphique semaine -->
+    <div class="card">
+      <h2 class="card-title">
+        <span>📊</span>
+        <span>Cette semaine</span>
+      </h2>
+      <div style="display: flex; justify-content: space-around; margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+        <div style="text-align: center;">
+          <div style="font-size: 0.9em; color: #666;">Total semaine</div>
+          <div style="font-size: 1.3em; font-weight: bold;" id="weekTotal">0 🚬</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 0.9em; color: #666;">Coût semaine</div>
+          <div style="font-size: 1.3em; font-weight: bold; color: var(--danger);" id="weekCost">0€</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 0.9em; color: #666;">Vs objectif</div>
+          <div style="font-size: 1.3em; font-weight: bold;" id="weekVsGoal">-</div>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="weekChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Bénéfices santé -->
+    <div class="card">
+      <h2 class="card-title">
+        <span>❤️</span>
+        <span>Bénéfices santé</span>
+      </h2>
+      <div class="health-benefits" id="healthBenefits"></div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="app.exportData()">💾 Export</button>
+        <label class="btn btn-secondary" style="text-align: center;">
+          📥 Import
+          <input type="file" accept=".json" onchange="app.importData(event)" style="display: none;">
+        </label>
+        <button class="btn btn-danger" onclick="app.resetData()">🗑️ Reset</button>
+      </div>
+    </div>
+
+    <!-- Objectifs -->
+    <div class="card">
+      <h2 class="card-title">
+        <span>⚙️</span>
+        <span>Objectifs & Économies</span>
+      </h2>
+      <div class="input-group">
+        <label for="dailyGoal">Objectif quotidien (max)</label>
+        <input type="number" id="dailyGoal" min="0" max="50" value="10" onchange="app.updateGoal()">
+      </div>
+      <div class="input-group">
+        <label for="pricePerPack">Prix par paquet (€)</label>
+        <input type="number" id="pricePerPack" min="0" step="0.5" value="10" onchange="app.updatePrice()">
+      </div>
+      <div style="margin: 15px 0; padding: 15px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1)); border-radius: 10px; border-left: 3px solid var(--success);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 0.9em; color: #666;">Projection annuelle d'économies</div>
+            <div style="font-size: 1.8em; font-weight: bold; color: var(--success);" id="yearProjection">0€</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.9em; color: #666;">Équivaut à</div>
+            <div style="font-size: 1.2em; font-weight: bold;" id="equivalent">-</div>
+          </div>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="goalChart"></canvas>
+      </div>
+      <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+        <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">Prix par cigarette : <strong id="pricePerCig">0.50€</strong></div>
+        <div style="font-size: 0.9em; color: #666;">Si vous arrêtez complètement : <strong id="totalYearSaving">0€/an</strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="notification" id="notification"></div>
+
+<script>
+  // Application principale
+  const app = {
+    // Données utilisateur
+    userData: {
+      points: 0,
+      consumptions: [],
+      challenges: [],
+      streak: 0,
+      bestStreak: 0,
+      dailyGoal: 10,
+      pricePerPack: 10,
+      totalCigarettesAvoided: 0,
+      startDate: new Date().toISOString()
+    },
+
+    // Graphiques
+    charts: {
+      evolution: null,
+      week: null,
+      goal: null
+    },
+
+    // Défis
+    challenges: [
+      { id: 1, name: "Premier pas", desc: "Première journée enregistrée", points: 10 },
+      { id: 2, name: "Réduction", desc: "2 cigarettes de moins qu'hier", points: 20 },
+      { id: 3, name: "Semaine complète", desc: "7 jours de suivi", points: 50 },
+      { id: 4, name: "Sous la barre des 5", desc: "Moins de 5 cigarettes", points: 40 },
+      { id: 5, name: "Journée sans", desc: "0 cigarette en 24h", points: 100 },
+      { id: 6, name: "Économies", desc: "50€ économisés", points: 80 },
+      { id: 7, name: "Un mois", desc: "30 jours de suivi", points: 150 },
+      { id: 8, name: "Champion", desc: "500 points atteints", points: 200 }
+    ],
+
+    // Bénéfices santé
+    healthBenefits: [
+      { hours: 0.33, icon: "💓", text: "Rythme cardiaque normal" },
+      { hours: 8, icon: "🫁", text: "Oxygène normalisé" },
+      { hours: 24, icon: "❤️", text: "Risque cardiaque réduit" },
+      { hours: 48, icon: "👃", text: "Goût et odorat améliorés" },
+      { hours: 72, icon: "🏃", text: "Respiration facilitée" },
+      { hours: 168, icon: "💪", text: "Circulation améliorée" },
+      { hours: 720, icon: "🌟", text: "Énergie augmentée" },
+      { hours: 8760, icon: "🎉", text: "Risques divisés par 2" }
+    ],
+
+    // Initialisation
+    init() {
+      this.loadData();
+      this.setTodayDate();
+      this.initCharts();
+      this.updateDisplay();
+
+      // Mise à jour automatique toutes les minutes
+      setInterval(() => this.updateDisplay(), 60000);
+    },
+
+    // Charger les données
+    loadData() {
+      const saved = localStorage.getItem('stopClopeData');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          // Fusionner avec les valeurs par défaut pour les propriétés manquantes
+          this.userData = {
+            points: parsed.points || 0,
+            consumptions: parsed.consumptions || [],
+            challenges: parsed.challenges || [],
+            streak: parsed.streak || 0,
+            bestStreak: parsed.bestStreak || 0,
+            dailyGoal: parsed.dailyGoal || 10,
+            pricePerPack: parsed.pricePerPack || 10,
+            totalCigarettesAvoided: parsed.totalCigarettesAvoided || 0,
+            startDate: parsed.startDate || new Date().toISOString(),
+            initialConsumption: parsed.initialConsumption || 20
+          };
+          console.log('Données chargées:', this.userData);
+        } catch (e) {
+          console.error('Erreur de chargement', e);
+          this.showNotification('Erreur lors du chargement des données', 'danger');
+        }
+      }
+
+      // Mettre à jour les champs avec les valeurs chargées
+      const dailyGoalEl = document.getElementById('dailyGoal');
+      const pricePerPackEl = document.getElementById('pricePerPack');
+
+      if (dailyGoalEl) dailyGoalEl.value = this.userData.dailyGoal;
+      if (pricePerPackEl) pricePerPackEl.value = this.userData.pricePerPack;
+    },
+
+    // Sauvegarder les données
+    saveData() {
+      try {
+        // S'assurer que toutes les propriétés existent
+        const dataToSave = {
+          points: this.userData.points || 0,
+          consumptions: this.userData.consumptions || [],
+          challenges: this.userData.challenges || [],
+          streak: this.userData.streak || 0,
+          bestStreak: this.userData.bestStreak || 0,
+          dailyGoal: this.userData.dailyGoal || 10,
+          pricePerPack: this.userData.pricePerPack || 10,
+          totalCigarettesAvoided: this.userData.totalCigarettesAvoided || 0,
+          startDate: this.userData.startDate || new Date().toISOString(),
+          initialConsumption: this.userData.initialConsumption || 20
+        };
+
+        localStorage.setItem('stopClopeData', JSON.stringify(dataToSave));
+        console.log('Données sauvegardées:', dataToSave);
+      } catch (e) {
+        console.error('Erreur de sauvegarde', e);
+        this.showNotification('Erreur lors de la sauvegarde', 'danger');
+      }
+    },
+
+    // Définir la date du jour
+    setTodayDate() {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('date').value = today;
+      document.getElementById('date').max = today;
+    },
+
+    // Notification
+    showNotification(message, type = 'success') {
+      const notif = document.getElementById('notification');
+      notif.textContent = message;
+      notif.className = `notification ${type}`;
+      notif.style.display = 'block';
+
+      setTimeout(() => {
+        notif.style.display = 'none';
+      }, 3000);
+    },
+
+    // Ajouter une consommation
+    addConsumption() {
+      const count = parseInt(document.getElementById('cigaretteCount').value) || 0;
+      const date = document.getElementById('date').value;
+      const mood = document.getElementById('mood').value;
+
+      if (!date) {
+        this.showNotification('Veuillez sélectionner une date', 'warning');
+        return;
+      }
+
+      if (count < 0 || count > 100) {
+        this.showNotification('Nombre invalide (0-100)', 'warning');
+        return;
+      }
+
+      // Vérifier si existe déjà
+      const existingIndex = this.userData.consumptions.findIndex(c => c.date === date);
+
+      if (existingIndex !== -1) {
+        // Mise à jour d'une entrée existante
+        const oldCount = this.userData.consumptions[existingIndex].count;
+        this.userData.consumptions[existingIndex] = { date, count, mood };
+
+        // Recalculer les cigarettes évitées si nécessaire
+        if (existingIndex > 0) {
+          const prevDay = this.userData.consumptions[existingIndex - 1];
+          if (count < prevDay.count) {
+            // Ajuster le total des cigarettes évitées
+            const oldReduction = oldCount < prevDay.count ? prevDay.count - oldCount : 0;
+            const newReduction = prevDay.count - count;
+            this.userData.totalCigarettesAvoided = Math.max(0, this.userData.totalCigarettesAvoided - oldReduction + newReduction);
+          }
+        }
+
+        this.showNotification('Journée mise à jour !', 'success');
+      } else {
+        // Nouvelle entrée
+        this.userData.consumptions.push({ date, count, mood });
+        this.userData.consumptions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // Points pour l'enregistrement
+        this.userData.points += 5;
+
+        // Trouver l'index de la nouvelle entrée après tri
+        const newIndex = this.userData.consumptions.findIndex(c => c.date === date);
+
+        // Vérifier réduction par rapport au jour précédent
+        if (newIndex > 0) {
+          const prevDay = this.userData.consumptions[newIndex - 1];
+          if (count < prevDay.count) {
+            const reduction = prevDay.count - count;
+            const bonus = reduction * 10;
+            this.userData.points += bonus;
+            this.userData.totalCigarettesAvoided += reduction;
+            this.showNotification(`Réduction détectée ! -${reduction} cigarettes = +${bonus} points 🎉`, 'success');
+          }
+        }
+
+        // Si c'est la première entrée, initialiser la consommation de référence
+        if (this.userData.consumptions.length === 1) {
+          this.userData.initialConsumption = count;
+        }
+
+        this.showNotification('Journée enregistrée ! +5 points', 'success');
+      }
+
+      // Sauvegarder immédiatement
+      this.saveData();
+
+      // Vérifier les défis
+      this.checkChallenges();
+
+      // Mettre à jour tout l'affichage
+      this.updateDisplay();
+
+      // Reset form
+      document.getElementById('cigaretteCount').value = '';
+      this.setTodayDate();
+    },
+
+    // Mettre à jour l'affichage
+    updateDisplay() {
+      // Vérifier que les éléments existent avant de les mettre à jour
+      const updateElement = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+      };
+
+      // Points et stats principales
+      updateElement('totalPoints', this.userData.points + ' pts');
+      updateElement('currentStreak', this.calculateStreak() + ' jours');
+      updateElement('moneySaved', this.getMoneySaved() + '€');
+
+      // Stats rapides
+      const today = new Date().toISOString().split('T')[0];
+      const todayData = this.userData.consumptions.find(c => c.date === today);
+
+      updateElement('todayCount', todayData ? todayData.count : 0);
+      updateElement('weekAvg', this.getWeekAverage().toFixed(1));
+      updateElement('monthTotal', this.getMonthTotal());
+      updateElement('reduction', this.getReductionPercentage() + '%');
+      updateElement('daysTracked', this.userData.consumptions.length);
+      updateElement('bestDay', this.getBestDay());
+
+      // Calculs financiers - seulement si les éléments existent
+      if (document.getElementById('monthSpent')) {
+        this.updateFinancialStats();
+      }
+
+      // Mise à jour des graphiques
+      this.updateCharts();
+
+      // Timeline
+      this.updateTimeline();
+
+      // Défis
+      this.displayChallenges();
+
+      // Bénéfices santé
+      this.updateHealthBenefits();
+    },
+
+    // Mettre à jour les statistiques financières
+    updateFinancialStats() {
+      const pricePerCig = this.userData.pricePerPack / 20;
+
+      // Stats du mois (30 derniers jours)
+      const last30 = this.userData.consumptions.slice(-30);
+      const totalLast30 = last30.reduce((sum, c) => sum + c.count, 0);
+      const spentLast30 = totalLast30 * pricePerCig;
+      const savedLast30 = this.userData.totalCigarettesAvoided * pricePerCig;
+      const avgDaily = last30.length > 0 ? totalLast30 / last30.length : 0;
+      const dailyCost = avgDaily * pricePerCig;
+
+      // Vérifier les valeurs NaN et les remplacer par 0
+      document.getElementById('monthSpent').textContent = (isNaN(spentLast30) ? 0 : spentLast30).toFixed(0) + '€';
+      document.getElementById('monthSaved').textContent = (isNaN(savedLast30) ? 0 : savedLast30).toFixed(0) + '€';
+      document.getElementById('dailyCost').textContent = (isNaN(dailyCost) ? 0 : dailyCost).toFixed(1) + '€';
+
+      // Stats de la semaine
+      const weekData = this.getWeekData();
+      const weekTotal = weekData.reduce((sum, count) => sum + count, 0);
+      const weekCost = weekTotal * pricePerCig;
+      const weekGoal = this.userData.dailyGoal * 7;
+      const weekDiff = weekGoal - weekTotal;
+
+      document.getElementById('weekTotal').textContent = weekTotal + ' 🚬';
+      document.getElementById('weekCost').textContent = (isNaN(weekCost) ? 0 : weekCost).toFixed(0) + '€';
+
+      const weekVsGoalEl = document.getElementById('weekVsGoal');
+      if (weekDiff >= 0) {
+        weekVsGoalEl.textContent = '+' + weekDiff + ' ✅';
+        weekVsGoalEl.style.color = 'var(--success)';
+      } else {
+        weekVsGoalEl.textContent = weekDiff + ' ❌';
+        weekVsGoalEl.style.color = 'var(--danger)';
+      }
+
+      // Projections annuelles
+      const reduction = this.getReductionPercentage();
+      const yearProjection = (reduction / 100) * avgDaily * 365 * pricePerCig;
+      const validProjection = isNaN(yearProjection) ? 0 : yearProjection;
+      document.getElementById('yearProjection').textContent = validProjection.toFixed(0) + '€';
+
+      // Équivalences
+      const equivalentEl = document.getElementById('equivalent');
+      if (validProjection >= 3000) {
+        equivalentEl.textContent = '✈️ Voyage tour du monde';
+      } else if (validProjection >= 1500) {
+        equivalentEl.textContent = '🏖️ Vacances de luxe';
+      } else if (validProjection >= 1000) {
+        equivalentEl.textContent = '📱 iPhone neuf';
+      } else if (validProjection >= 500) {
+        equivalentEl.textContent = '🎮 Console de jeux';
+      } else if (validProjection >= 200) {
+        equivalentEl.textContent = '👟 Paire de baskets';
+      } else if (validProjection >= 100) {
+        equivalentEl.textContent = '🍽️ Restaurant étoilé';
+      } else if (validProjection >= 50) {
+        equivalentEl.textContent = '🎬 5 sorties cinéma';
+      } else {
+        equivalentEl.textContent = '☕ Quelques cafés';
+      }
+
+      // Prix par cigarette et économie totale
+      document.getElementById('pricePerCig').textContent = pricePerCig.toFixed(2) + '€';
+      const totalYearSaving = avgDaily * 365 * pricePerCig;
+      document.getElementById('totalYearSaving').textContent = (isNaN(totalYearSaving) ? 0 : totalYearSaving).toFixed(0) + '€/an';
+    },
+
+    // Calculer le streak
+    calculateStreak() {
+      if (this.userData.consumptions.length < 2) return 0;
+
+      let streak = 0;
+      for (let i = this.userData.consumptions.length - 1; i > 0; i--) {
+        const current = this.userData.consumptions[i]?.count || 0;
+        const previous = this.userData.consumptions[i-1]?.count || 0;
+        if (current < previous) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+
+      if (streak > (this.userData.bestStreak || 0)) {
+        this.userData.bestStreak = streak;
+        this.saveData();
+      }
+
+      return streak;
+    },
+
+    // Argent économisé
+    getMoneySaved() {
+      const pricePerCig = this.userData.pricePerPack / 20;
+      const avoided = this.userData.totalCigarettesAvoided || 0;
+      return Math.round(avoided * pricePerCig);
+    },
+
+    // Moyenne hebdomadaire
+    getWeekAverage() {
+      const last7 = this.userData.consumptions.slice(-7);
+      if (last7.length === 0) return 0;
+      const sum = last7.reduce((total, c) => total + (c.count || 0), 0);
+      return sum / last7.length;
+    },
+
+    // Total mensuel
+    getMonthTotal() {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const monthData = this.userData.consumptions.filter(c => c.date >= monthStart);
+      return monthData.reduce((sum, c) => sum + (c.count || 0), 0);
+    },
+
+    // Pourcentage de réduction
+    getReductionPercentage() {
+      if (this.userData.consumptions.length < 2) return 0;
+      const first = this.userData.consumptions[0]?.count || 0;
+      const last = this.userData.consumptions[this.userData.consumptions.length - 1]?.count || 0;
+      if (first === 0) return 0;
+      const reduction = ((first - last) / first) * 100;
+      return Math.max(0, Math.round(reduction));
+    },
+
+    // Meilleur jour
+    getBestDay() {
+      if (this.userData.consumptions.length === 0) return '-';
+      const counts = this.userData.consumptions.map(c => c.count || 0);
+      return Math.min(...counts);
+    },
+
+    // Initialiser les graphiques
+    initCharts() {
+      // Graphique évolution avec prix
+      const ctx1 = document.getElementById('evolutionChart');
+      if (ctx1) {
+        this.charts.evolution = new Chart(ctx1.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: [],
+            datasets: [{
+              label: 'Cigarettes',
+              data: [],
+              borderColor: '#667eea',
+              backgroundColor: 'rgba(102, 126, 234, 0.1)',
+              tension: 0.4,
+              yAxisID: 'y'
+            }, {
+              label: 'Coût journalier (€)',
+              data: [],
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              tension: 0.4,
+              yAxisID: 'y1'
+            }, {
+              label: 'Objectif',
+              data: [],
+              borderColor: '#ef4444',
+              borderDash: [5, 5],
+              backgroundColor: 'transparent',
+              yAxisID: 'y'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            plugins: {
+              legend: {
+                display: true,
+                position: 'bottom'
+              },
+              tooltip: {
+                callbacks: {
+                  afterLabel: function(context) {
+                    if (context.datasetIndex === 0) {
+                      const pricePerCig = app.userData.pricePerPack / 20;
+                      const cost = context.parsed.y * pricePerCig;
+                      return 'Coût: ' + cost.toFixed(2) + '€';
+                    }
+                    return '';
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Cigarettes'
+                }
+              },
+              y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Coût (€)'
+                },
+                grid: {
+                  drawOnChartArea: false,
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // Graphique semaine avec couleurs selon l'objectif
+      const ctx2 = document.getElementById('weekChart');
+      if (ctx2) {
+        this.charts.week = new Chart(ctx2.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
+            datasets: [{
+              label: 'Cigarettes',
+              data: [0, 0, 0, 0, 0, 0, 0],
+              backgroundColor: 'rgba(102, 126, 234, 0.6)',
+              borderColor: '#667eea',
+              borderWidth: 2
+            }, {
+              label: 'Coût (€)',
+              data: [0, 0, 0, 0, 0, 0, 0],
+              backgroundColor: 'rgba(245, 158, 11, 0.6)',
+              borderColor: '#f59e0b',
+              borderWidth: 2,
+              yAxisID: 'y1',
+              type: 'line'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: true,
+                position: 'bottom'
+              },
+              tooltip: {
+                callbacks: {
+                  afterLabel: function(context) {
+                    if (context.datasetIndex === 0) {
+                      const pricePerCig = app.userData.pricePerPack / 20;
+                      const cost = context.parsed.y * pricePerCig;
+                      return 'Coût: ' + cost.toFixed(2) + '€';
+                    }
+                    return '';
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Cigarettes'
+                }
+              },
+              y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Coût (€)'
+                },
+                grid: {
+                  drawOnChartArea: false,
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // Graphique objectifs avec économies
+      const ctx3 = document.getElementById('goalChart');
+      if (ctx3) {
+        this.charts.goal = new Chart(ctx3.getContext('2d'), {
+          type: 'doughnut',
+          data: {
+            labels: ['Économisé', 'Dépensé', 'Économie potentielle'],
+            datasets: [{
+              data: [0, 0, 0],
+              backgroundColor: ['#10b981', '#ef4444', '#e5e7eb'],
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom'
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const label = context.label || '';
+                    const value = context.parsed || 0;
+                    const pricePerCig = app.userData.pricePerPack / 20;
+                    const euros = (value * pricePerCig).toFixed(2);
+                    return label + ': ' + value + ' cig. (' + euros + '€)';
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+    },
+
+    // Mettre à jour les graphiques
+    updateCharts() {
+      const pricePerCig = this.userData.pricePerPack / 20;
+
+      // Évolution avec prix
+      if (this.charts.evolution) {
+        const last30 = this.userData.consumptions.slice(-30);
+        this.charts.evolution.data.labels = last30.map(c =>
+                new Date(c.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+        );
+        this.charts.evolution.data.datasets[0].data = last30.map(c => c.count || 0);
+        this.charts.evolution.data.datasets[1].data = last30.map(c => (c.count || 0) * pricePerCig);
+        this.charts.evolution.data.datasets[2].data = new Array(last30.length).fill(this.userData.dailyGoal);
+        this.charts.evolution.update();
+      }
+
+      // Semaine avec prix
+      if (this.charts.week) {
+        const weekData = this.getWeekData();
+        this.charts.week.data.datasets[0].data = weekData;
+        this.charts.week.data.datasets[1].data = weekData.map(count => count * pricePerCig);
+
+        // Couleurs selon l'objectif
+        this.charts.week.data.datasets[0].backgroundColor = weekData.map(count => {
+          if (count === 0) return 'rgba(139, 92, 246, 0.6)'; // Violet pour 0
+          if (count <= this.userData.dailyGoal * 0.5) return 'rgba(16, 185, 129, 0.6)'; // Vert
+          if (count <= this.userData.dailyGoal) return 'rgba(245, 158, 11, 0.6)'; // Orange
+          return 'rgba(239, 68, 68, 0.6)'; // Rouge
+        });
+
+        this.charts.week.update();
+      }
+
+      // Objectifs avec économies
+      if (this.charts.goal) {
+        const total = this.userData.consumptions.reduce((sum, c) => sum + (c.count || 0), 0);
+        const avoided = this.userData.totalCigarettesAvoided || 0;
+        const potential = Math.max(0, (this.userData.dailyGoal * 30) - total);
+
+        this.charts.goal.data.datasets[0].data = [avoided, total, potential];
+        this.charts.goal.update();
+      }
+    },
+
+    // Données de la semaine
+    getWeekData() {
+      const data = [0, 0, 0, 0, 0, 0, 0];
+      const today = new Date();
+      const monday = new Date(today);
+      const day = today.getDay();
+      monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(monday);
+        date.setDate(monday.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        const dayData = this.userData.consumptions.find(c => c.date === dateStr);
+        if (dayData) data[i] = dayData.count;
+      }
+
+      return data;
+    },
+
+    // Timeline
+    updateTimeline() {
+      const timeline = document.getElementById('timeline');
+      if (!timeline) return;
+
+      timeline.innerHTML = '';
+      const last30 = this.userData.consumptions.slice(-30);
+
+      last30.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'timeline-day';
+        const count = c.count || 0;
+
+        if (count === 0) {
+          div.classList.add('zero');
+        } else if (count <= this.userData.dailyGoal * 0.5) {
+          div.classList.add('low');
+        } else if (count <= this.userData.dailyGoal) {
+          div.classList.add('medium');
+        } else {
+          div.classList.add('high');
+        }
+
+        div.textContent = count;
+        const dateObj = new Date(c.date);
+        const dateStr = dateObj.toLocaleDateString('fr-FR', {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short'
+        });
+        const moodStr = c.mood ? ' ' + c.mood : '';
+        div.title = `${dateStr} : ${count} cigarettes${moodStr}`;
+        timeline.appendChild(div);
+      });
+
+      // Ajouter des cases vides pour arriver à 30 jours si nécessaire
+      for (let i = last30.length; i < 30; i++) {
+        const div = document.createElement('div');
+        div.className = 'timeline-day';
+        div.style.background = '#e5e7eb';
+        div.style.color = '#9ca3af';
+        div.textContent = '-';
+        timeline.appendChild(div);
+      }
+    },
+
+    // Afficher les défis
+    displayChallenges() {
+      const list = document.getElementById('challengesList');
+      if (!list) return;
+
+      list.innerHTML = '';
+
+      this.challenges.forEach(challenge => {
+        const completed = this.userData.challenges.includes(challenge.id);
+        const div = document.createElement('div');
+        div.className = `challenge-item ${completed ? 'completed' : ''}`;
+
+        div.innerHTML = `
+                        <div class="challenge-info">
+                            <div class="challenge-name">${challenge.name}</div>
+                            <div class="challenge-desc">${challenge.desc}</div>
+                        </div>
+                        <div class="challenge-points">+${challenge.points} pts</div>
+                    `;
+
+        list.appendChild(div);
+      });
+    },
+
+    // Vérifier les défis
+    checkChallenges() {
+      // Défi 1 : Premier pas
+      if (this.userData.consumptions.length >= 1 && !this.userData.challenges.includes(1)) {
+        this.completeChallenge(1);
+      }
+
+      // Défi 3 : Semaine complète
+      if (this.userData.consumptions.length >= 7 && !this.userData.challenges.includes(3)) {
+        this.completeChallenge(3);
+      }
+
+      // Défi 5 : Journée sans
+      if (this.userData.consumptions.some(c => c.count === 0) && !this.userData.challenges.includes(5)) {
+        this.completeChallenge(5);
+      }
+
+      // Défi 6 : Économies
+      if (this.getMoneySaved() >= 50 && !this.userData.challenges.includes(6)) {
+        this.completeChallenge(6);
+      }
+
+      // Défi 7 : Un mois
+      if (this.userData.consumptions.length >= 30 && !this.userData.challenges.includes(7)) {
+        this.completeChallenge(7);
+      }
+
+      // Défi 8 : Champion
+      if (this.userData.points >= 500 && !this.userData.challenges.includes(8)) {
+        this.completeChallenge(8);
+      }
+    },
+
+    // Compléter un défi
+    completeChallenge(id) {
+      const challenge = this.challenges.find(c => c.id === id);
+      if (challenge) {
+        this.userData.challenges.push(id);
+        this.userData.points += challenge.points;
+        this.showNotification(`Défi "${challenge.name}" complété ! +${challenge.points} points`, 'success');
+        this.saveData();
+      }
+    },
+
+    // Bénéfices santé
+    updateHealthBenefits() {
+      const list = document.getElementById('healthBenefits');
+      if (!list) return;
+
+      list.innerHTML = '';
+
+      let hoursSince = 0;
+      if (this.userData.consumptions.length > 0) {
+        const lastZero = this.userData.consumptions.filter(c => c.count === 0).pop();
+        if (lastZero) {
+          hoursSince = (new Date() - new Date(lastZero.date)) / (1000 * 60 * 60);
+        }
+      }
+
+      this.healthBenefits.forEach(benefit => {
+        const unlocked = hoursSince >= benefit.hours;
+        const div = document.createElement('div');
+        div.className = `benefit-item ${unlocked ? 'unlocked' : ''}`;
+        div.innerHTML = `
+                        <span style="font-size: 1.5em;">${benefit.icon}</span>
+                        <span>${benefit.text}</span>
+                    `;
+        list.appendChild(div);
+      });
+    },
+
+    // Objectifs
+    updateGoal() {
+      const newGoal = parseInt(document.getElementById('dailyGoal').value);
+      if (!isNaN(newGoal) && newGoal >= 0 && newGoal <= 100) {
+        this.userData.dailyGoal = newGoal;
+        this.saveData();
+        this.updateDisplay();
+        this.showNotification('Objectif mis à jour ✓', 'success');
+      } else {
+        this.showNotification('Objectif invalide (0-100)', 'warning');
+        document.getElementById('dailyGoal').value = this.userData.dailyGoal;
+      }
+    },
+
+    updatePrice() {
+      const newPrice = parseFloat(document.getElementById('pricePerPack').value);
+      if (!isNaN(newPrice) && newPrice >= 0 && newPrice <= 100) {
+        this.userData.pricePerPack = newPrice;
+        this.saveData();
+        this.updateDisplay();
+        this.showNotification('Prix mis à jour ✓', 'success');
+      } else {
+        this.showNotification('Prix invalide (0-100€)', 'warning');
+        document.getElementById('pricePerPack').value = this.userData.pricePerPack;
+      }
+    },
+
+    // Export/Import/Reset
+    exportData() {
+      const dataStr = JSON.stringify(this.userData, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `stopclope-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      this.showNotification('Données exportées', 'success');
+    },
+
+    importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          this.userData = JSON.parse(e.target.result);
+          this.saveData();
+          this.updateDisplay();
+          this.showNotification('Données importées', 'success');
+        } catch (error) {
+          this.showNotification('Erreur d\'import', 'danger');
+        }
+      };
+      reader.readAsText(file);
+    },
+
+    resetData() {
+      if (confirm('Effacer toutes les données ?')) {
+        localStorage.removeItem('stopClopeData');
+        location.reload();
+      }
+    }
+  };
+
+  // Démarrage de l'application
+  document.addEventListener('DOMContentLoaded', () => {
+    app.init();
+  });
+</script>
+</body>
+</html>

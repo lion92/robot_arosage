@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StopClope Pro - Suivi Anti-Tabac Complet</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --light: #f3f4f6;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            min-height: 100vh;
+            padding: 10px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .logo {
+            font-size: 1.8em;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stats-badges {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .stat-badge {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+        }
+
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 10px;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+
+        .btn-success {
+            background: var(--success);
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 250px;
+            margin-top: 20px;
+        }
+
+        .timeline {
+            display: flex;
+            gap: 5px;
+            overflow-x: auto;
+            padding: 10px 0;
+            margin-top: 15px;
+        }
+
+        .timeline-day {
+            min-width: 35px;
+            height: 35px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: 600;
+            color: white;
+        }
+
+        .timeline-day.low {
+            background: var(--success);
+        }
+
+        .timeline-day.medium {
+            background: var(--warning);
+        }
+
+        .timeline-day.high {
+            background: var(--danger);
+        }
+
+        .timeline-day.zero {
+            background: var(--secondary);
+        }
+
+        /* Historique */
+        .history-section {
+            grid-column: 1 / -1;
+        }
+
+        .history-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .history-controls input,
+        .history-controls select {
+            flex: 1;
+            min-width: 150px;
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .history-table th {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .history-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .history-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 0.9em;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            margin: 0 2px;
+        }
+
+        .btn-edit {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-delete {
+            background: var(--danger);
+            color: white;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: none;
+            animation: slideIn 0.5s ease;
+            z-index: 1000;
+            max-width: 300px;
+        }
+
+        .notification.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .notification.warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-group {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">🚭 StopClope Pro</div>
+        <div class="stats-badges">
+            <div class="stat-badge">
+                <span id="totalPoints">0</span> points
+            </div>
+            <div class="stat-badge" style="background: linear-gradient(135deg, var(--success), #059669);">
+                <span id="currentStreak">0</span> jours de streak
+            </div>
+            <div class="stat-badge" style="background: linear-gradient(135deg, var(--warning), #d97706);">
+                <span id="moneySaved">0</span>€ économisés
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques rapides -->
+    <div class="quick-stats">
+        <div class="stat-item">
+            <div class="stat-value" id="todayCount">0</div>
+            <div class="stat-label">Aujourd'hui</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="weekAvg">0</div>
+            <div class="stat-label">Moyenne 7j</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="monthTotal">0</div>
+            <div class="stat-label">Total mois</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="reduction">0%</div>
+            <div class="stat-label">Réduction</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="daysTracked">0</div>
+            <div class="stat-label">Jours suivis</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="bestDay">-</div>
+            <div class="stat-label">Record</div>
+        </div>
+    </div>
+
+    <!-- Dashboard Grid -->
+    <div class="dashboard-grid">
+        <!-- Enregistrement -->
+        <div class="card">
+            <h2 class="card-title">📝 Enregistrement quotidien</h2>
+
+            <div id="editMode" style="display: none; padding: 10px; background: #fff3cd; border-radius: 8px; margin-bottom: 15px;">
+                <strong>🔄 Mode édition</strong> - Modification de l'entrée du <span id="editDate"></span>
+                <button onclick="cancelEdit()" style="float: right; background: #6c757d; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">Annuler</button>
+            </div>
+
+            <div class="input-group">
+                <label for="cigaretteCount">Nombre de cigarettes</label>
+                <input type="number" id="cigaretteCount" min="0" max="100" placeholder="0">
+            </div>
+
+            <div class="input-group">
+                <label for="date">Date</label>
+                <input type="date" id="date">
+            </div>
+
+            <div class="input-group">
+                <label for="mood">Humeur</label>
+                <select id="mood">
+                    <option value="😊">😊 Excellent</option>
+                    <option value="🙂">🙂 Bien</option>
+                    <option value="😐">😐 Neutre</option>
+                    <option value="😔">😔 Difficile</option>
+                    <option value="😤">😤 Très difficile</option>
+                </select>
+            </div>
+
+            <button class="btn" id="saveBtn" onclick="addConsumption()">
+                💾 Enregistrer
+            </button>
+
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="exportData()">📥 Export</button>
+                <button class="btn btn-secondary" onclick="generateDemoData()">🎲 Démo</button>
+                <button class="btn btn-danger" onclick="resetData()">🗑️ Reset</button>
+            </div>
+        </div>
+
+        <!-- Graphique évolution -->
+        <div class="card">
+            <h2 class="card-title">📈 Évolution 30 jours</h2>
+            <div class="chart-container">
+                <canvas id="evolutionChart"></canvas>
+            </div>
+            <div class="timeline" id="timeline"></div>
+        </div>
+
+        <!-- Objectifs -->
+        <div class="card">
+            <h2 class="card-title">⚙️ Objectifs</h2>
+            <div class="input-group">
+                <label for="dailyGoal">Objectif quotidien (max)</label>
+                <input type="number" id="dailyGoal" min="0" max="50" value="10" onchange="updateGoal()">
+            </div>
+            <div class="input-group">
+                <label for="pricePerPack">Prix par paquet (€)</label>
+                <input type="number" id="pricePerPack" min="0" step="0.5" value="10" onchange="updatePrice()">
+            </div>
+            <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px;">
+                <div>Prix/cigarette : <strong id="pricePerCig">0.50€</strong></div>
+                <div>Coût/jour : <strong id="dailyCost">0€</strong></div>
+                <div>Économie potentielle/an : <strong id="yearSaving">0€</strong></div>
+            </div>
+        </div>
+
+        <!-- Historique -->
+        <div class="card history-section">
+            <h2 class="card-title">📜 Historique complet</h2>
+
+            <div class="history-controls">
+                <input type="text" id="searchHistory" placeholder="🔍 Rechercher..." onkeyup="filterHistory()">
+                <select id="filterMood" onchange="filterHistory()">
+                    <option value="">Toutes les humeurs</option>
+                    <option value="😊">😊 Excellent</option>
+                    <option value="🙂">🙂 Bien</option>
+                    <option value="😐">😐 Neutre</option>
+                    <option value="😔">😔 Difficile</option>
+                    <option value="😤">😤 Très difficile</option>
+                </select>
+                <select id="sortHistory" onchange="sortHistory()">
+                    <option value="date-desc">Plus récent</option>
+                    <option value="date-asc">Plus ancien</option>
+                    <option value="count-asc">Moins fumé</option>
+                    <option value="count-desc">Plus fumé</option>
+                </select>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table class="history-table">
+                    <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Cigarettes</th>
+                        <th>Coût</th>
+                        <th>Humeur</th>
+                        <th>Vs Objectif</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #999;">
+                            Aucune donnée. Cliquez sur "🎲 Démo" pour voir un exemple.
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="notification" id="notification"></div>
+
+<script>
+    // Variables globales
+    let userData = {
+        points: 0,
+        consumptions: [],
+        streak: 0,
+        dailyGoal: 10,
+        pricePerPack: 10,
+        totalCigarettesAvoided: 0
+    };
+
+    let charts = {};
+    let currentSort = 'date-desc';
+    let currentFilter = '';
+    let isEditMode = false;
+    let editingDate = null;
+
+    // Initialisation
+    function init() {
+        loadData();
+        setTodayDate();
+        initCharts();
+        updateDisplay();
+    }
+
+    // Charger les données
+    function loadData() {
+        const saved = localStorage.getItem('stopClopeData');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                // Valider les données
+                userData = {
+                    points: parsed.points || 0,
+                    consumptions: Array.isArray(parsed.consumptions) ? parsed.consumptions : [],
+                    streak: parsed.streak || 0,
+                    dailyGoal: parsed.dailyGoal || 10,
+                    pricePerPack: parsed.pricePerPack || 10,
+                    totalCigarettesAvoided: parsed.totalCigarettesAvoided || 0
+                };
+            } catch (e) {
+                console.error('Erreur de chargement', e);
+                // Réinitialiser si les données sont corrompues
+                userData = {
+                    points: 0,
+                    consumptions: [],
+                    streak: 0,
+                    dailyGoal: 10,
+                    pricePerPack: 10,
+                    totalCigarettesAvoided: 0
+                };
+            }
+        }
+
+        // Mettre à jour les champs
+        const dailyGoalEl = document.getElementById('dailyGoal');
+        const pricePerPackEl = document.getElementById('pricePerPack');
+
+        if (dailyGoalEl) dailyGoalEl.value = userData.dailyGoal;
+        if (pricePerPackEl) pricePerPackEl.value = userData.pricePerPack;
+    }
+
+    // Sauvegarder les données
+    function saveData() {
+        localStorage.setItem('stopClopeData', JSON.stringify(userData));
+    }
+
+    // Définir la date du jour
+    function setTodayDate() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('date').value = today;
+        document.getElementById('date').max = today;
+    }
+
+    // Notification
+    function showNotification(message, type = 'success') {
+        const notif = document.getElementById('notification');
+        notif.textContent = message;
+        notif.className = `notification ${type}`;
+        notif.style.display = 'block';
+
+        setTimeout(() => {
+            notif.style.display = 'none';
+        }, 3000);
+    }
+
+    // Ajouter ou modifier une consommation
+    function addConsumption() {
+        const count = parseInt(document.getElementById('cigaretteCount').value) || 0;
+        const date = document.getElementById('date').value;
+        const mood = document.getElementById('mood').value;
+
+        if (!date) {
+            showNotification('Veuillez sélectionner une date', 'warning');
+            return;
+        }
+
+        if (count < 0 || count > 100) {
+            showNotification('Nombre invalide (0-100)', 'warning');
+            return;
+        }
+
+        // En mode édition, on supprime l'ancienne entrée si la date a changé
+        if (isEditMode && editingDate && editingDate !== date) {
+            userData.consumptions = userData.consumptions.filter(c => c.date !== editingDate);
+        }
+
+        // Vérifier si existe déjà
+        const existingIndex = userData.consumptions.findIndex(c => c.date === date);
+
+        if (existingIndex !== -1) {
+            // Mise à jour
+            userData.consumptions[existingIndex] = { date, count, mood };
+            showNotification('Journée mise à jour avec succès !', 'success');
+        } else {
+            // Nouvelle entrée
+            userData.consumptions.push({ date, count, mood });
+            userData.consumptions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // Points et réductions seulement pour les nouvelles entrées
+            if (!isEditMode) {
+                userData.points += 5;
+
+                // Trouver la position de la nouvelle entrée après le tri
+                const newIndex = userData.consumptions.findIndex(c => c.date === date);
+
+                if (newIndex > 0) {
+                    const prev = userData.consumptions[newIndex - 1];
+                    if (count < prev.count) {
+                        const reduction = prev.count - count;
+                        userData.points += reduction * 10;
+                        userData.totalCigarettesAvoided += reduction;
+                        showNotification(`Réduction détectée ! -${reduction} cigarettes = +${reduction * 10} points 🎉`, 'success');
+                    }
+                }
+            }
+
+            if (!isEditMode) {
+                showNotification('Journée enregistrée avec succès !', 'success');
+            } else {
+                showNotification('Journée modifiée avec succès !', 'success');
+            }
+        }
+
+        // Réinitialiser le mode édition
+        cancelEdit();
+
+        saveData();
+        updateDisplay();
+
+        // Réinitialiser le formulaire
+        document.getElementById('cigaretteCount').value = '';
+        setTodayDate();
+    }
+
+    // Éditer une entrée
+    function editEntry(date) {
+        console.log('Édition de l\'entrée:', date);
+
+        const entry = userData.consumptions ? userData.consumptions.find(c => c.date === date) : null;
+        if (!entry) {
+            showNotification('Entrée non trouvée', 'warning');
+            return;
+        }
+
+        // Activer le mode édition
+        isEditMode = true;
+        editingDate = date;
+
+        // Remplir le formulaire
+        document.getElementById('date').value = date;
+        document.getElementById('cigaretteCount').value = entry.count;
+        document.getElementById('mood').value = entry.mood || '😐';
+
+        // Afficher l'indicateur de mode édition
+        const editModeDiv = document.getElementById('editMode');
+        if (editModeDiv) {
+            editModeDiv.style.display = 'block';
+            const editDateSpan = document.getElementById('editDate');
+            if (editDateSpan) {
+                editDateSpan.textContent = new Date(date).toLocaleDateString('fr-FR');
+            }
+        }
+
+        // Changer le texte du bouton
+        const saveBtn = document.getElementById('saveBtn');
+        if (saveBtn) {
+            saveBtn.innerHTML = '✏️ Modifier';
+            saveBtn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+        }
+
+        // Scroll vers le formulaire
+        const firstCard = document.querySelector('.card');
+        if (firstCard) {
+            firstCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        showNotification('Modifiez les valeurs et cliquez sur Modifier', 'info');
+    }
+
+    // Annuler l'édition
+    function cancelEdit() {
+        isEditMode = false;
+        editingDate = null;
+
+        // Cacher l'indicateur de mode édition
+        const editModeDiv = document.getElementById('editMode');
+        if (editModeDiv) {
+            editModeDiv.style.display = 'none';
+        }
+
+        // Restaurer le bouton
+        const saveBtn = document.getElementById('saveBtn');
+        if (saveBtn) {
+            saveBtn.innerHTML = '💾 Enregistrer';
+            saveBtn.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+        }
+
+        // Réinitialiser le formulaire
+        document.getElementById('cigaretteCount').value = '';
+        setTodayDate();
+        document.getElementById('mood').value = '😊';
+    }
+
+    // Supprimer une entrée
+    function deleteEntry(date) {
+        console.log('Suppression de l\'entrée:', date);
+
+        if (!userData.consumptions || userData.consumptions.length === 0) {
+            showNotification('Aucune donnée à supprimer', 'warning');
+            return;
+        }
+
+        const entry = userData.consumptions.find(c => c.date === date);
+        if (!entry) {
+            showNotification('Entrée non trouvée', 'warning');
+            return;
+        }
+
+        const dateStr = new Date(date).toLocaleDateString('fr-FR');
+        const confirmMsg = `Voulez-vous vraiment supprimer l'entrée du ${dateStr} ?\n\nCigarettes: ${entry.count}\nHumeur: ${entry.mood || 'Non définie'}`;
+
+        if (confirm(confirmMsg)) {
+            // Supprimer l'entrée
+            userData.consumptions = userData.consumptions.filter(c => c.date !== date);
+
+            // Recalculer les points si nécessaire
+            // (on pourrait soustraire les points gagnés mais c'est complexe)
+
+            saveData();
+            updateDisplay();
+
+            showNotification(`Entrée du ${dateStr} supprimée avec succès !`, 'success');
+
+            console.log('Entrée supprimée, nombre d\'entrées restantes:', userData.consumptions.length);
+        }
+    }
+
+    // Mettre à jour l'affichage
+    function updateDisplay() {
+        // Vérifier que userData existe
+        if (!userData) {
+            userData = {
+                points: 0,
+                consumptions: [],
+                streak: 0,
+                dailyGoal: 10,
+                pricePerPack: 10,
+                totalCigarettesAvoided: 0
+            };
+        }
+
+        // Stats principales
+        document.getElementById('totalPoints').textContent = userData.points || 0;
+        document.getElementById('currentStreak').textContent = calculateStreak();
+        document.getElementById('moneySaved').textContent = getMoneySaved();
+
+        // Stats rapides
+        const today = new Date().toISOString().split('T')[0];
+        const todayData = userData.consumptions ? userData.consumptions.find(c => c.date === today) : null;
+        document.getElementById('todayCount').textContent = todayData ? todayData.count : 0;
+        document.getElementById('weekAvg').textContent = getWeekAverage().toFixed(1);
+        document.getElementById('monthTotal').textContent = getMonthTotal();
+        document.getElementById('reduction').textContent = getReductionPercentage() + '%';
+        document.getElementById('daysTracked').textContent = userData.consumptions ? userData.consumptions.length : 0;
+        document.getElementById('bestDay').textContent = getBestDay();
+
+        // Prix
+        const pricePerCig = (userData.pricePerPack || 10) / 20;
+        document.getElementById('pricePerCig').textContent = pricePerCig.toFixed(2) + '€';
+
+        const avgDaily = getWeekAverage();
+        const dailyCost = avgDaily * pricePerCig;
+        const yearSaving = avgDaily * pricePerCig * 365;
+
+        document.getElementById('dailyCost').textContent = (isNaN(dailyCost) ? 0 : dailyCost).toFixed(2) + '€';
+        document.getElementById('yearSaving').textContent = (isNaN(yearSaving) ? 0 : yearSaving).toFixed(0) + '€';
+
+        // Mise à jour des graphiques et historique
+        updateCharts();
+        updateTimeline();
+        updateHistory();
+    }
+
+    // Calculs
+    function calculateStreak() {
+        if (!userData.consumptions || userData.consumptions.length < 2) return 0;
+        let streak = 0;
+        for (let i = userData.consumptions.length - 1; i > 0; i--) {
+            const current = userData.consumptions[i].count || 0;
+            const previous = userData.consumptions[i-1].count || 0;
+            if (current < previous) {
+                streak++;
+            } else {
+                break;
+            }
+        }
+        return streak;
+    }
+
+    function getMoneySaved() {
+        const pricePerCig = userData.pricePerPack / 20;
+        const avoided = userData.totalCigarettesAvoided || 0;
+        return Math.round(avoided * pricePerCig);
+    }
+
+    function getWeekAverage() {
+        if (!userData.consumptions || userData.consumptions.length === 0) return 0;
+        const last7 = userData.consumptions.slice(-7);
+        if (last7.length === 0) return 0;
+        const sum = last7.reduce((total, c) => total + (c.count || 0), 0);
+        return sum / last7.length;
+    }
+
+    function getMonthTotal() {
+        if (!userData.consumptions || userData.consumptions.length === 0) return 0;
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        return userData.consumptions
+            .filter(c => c.date >= monthStart)
+            .reduce((sum, c) => sum + (c.count || 0), 0);
+    }
+
+    function getReductionPercentage() {
+        if (!userData.consumptions || userData.consumptions.length < 2) return 0;
+        const first = userData.consumptions[0].count || 0;
+        const last = userData.consumptions[userData.consumptions.length - 1].count || 0;
+        if (first === 0) return 0;
+        const reduction = ((first - last) / first) * 100;
+        return Math.max(0, Math.round(reduction));
+    }
+
+    function getBestDay() {
+        if (!userData.consumptions || userData.consumptions.length === 0) return '-';
+        const counts = userData.consumptions.map(c => c.count || 0);
+        return Math.min(...counts);
+    }
+
+    // Graphiques
+    function initCharts() {
+        const ctx1 = document.getElementById('evolutionChart');
+        if (ctx1) {
+            try {
+                charts.evolution = new Chart(ctx1.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Cigarettes',
+                            data: [],
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('Erreur lors de l\'initialisation du graphique:', e);
+            }
+        }
+    }
+
+    function updateCharts() {
+        if (charts.evolution && userData.consumptions && userData.consumptions.length > 0) {
+            try {
+                const last30 = userData.consumptions.slice(-30);
+                charts.evolution.data.labels = last30.map(c => {
+                    const date = new Date(c.date);
+                    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+                });
+                charts.evolution.data.datasets[0].data = last30.map(c => c.count || 0);
+                charts.evolution.update();
+            } catch (e) {
+                console.error('Erreur lors de la mise à jour du graphique:', e);
+            }
+        }
+    }
+
+    // Timeline
+    function updateTimeline() {
+        const timeline = document.getElementById('timeline');
+        if (!timeline) return;
+
+        timeline.innerHTML = '';
+
+        if (!userData.consumptions || userData.consumptions.length === 0) {
+            timeline.innerHTML = '<div style="color: #999; padding: 10px;">Aucune donnée</div>';
+            return;
+        }
+
+        const last30 = userData.consumptions.slice(-30);
+
+        last30.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'timeline-day';
+            const count = c.count || 0;
+
+            if (count === 0) {
+                div.classList.add('zero');
+            } else if (count <= userData.dailyGoal * 0.5) {
+                div.classList.add('low');
+            } else if (count <= userData.dailyGoal) {
+                div.classList.add('medium');
+            } else {
+                div.classList.add('high');
+            }
+
+            div.textContent = count;
+            const dateObj = new Date(c.date);
+            div.title = dateObj.toLocaleDateString('fr-FR') + ' : ' + count + ' cigarettes';
+            timeline.appendChild(div);
+        });
+    }
+
+    // Historique
+    function updateHistory() {
+        const tbody = document.getElementById('historyTableBody');
+        if (!tbody) return;
+
+        if (!userData.consumptions || userData.consumptions.length === 0) {
+            tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #999; padding: 20px;">
+                            Aucune donnée. Cliquez sur "🎲 Démo" pour voir un exemple.
+                        </td>
+                    </tr>
+                `;
+            return;
+        }
+
+        let data = [...userData.consumptions];
+
+        // Appliquer les filtres
+        const searchInput = document.getElementById('searchHistory');
+        const moodSelect = document.getElementById('filterMood');
+
+        const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+        const moodFilter = moodSelect ? moodSelect.value : '';
+
+        if (searchTerm) {
+            data = data.filter(c => {
+                const date = new Date(c.date).toLocaleDateString('fr-FR').toLowerCase();
+                return date.includes(searchTerm);
+            });
+        }
+
+        if (moodFilter) {
+            data = data.filter(c => c.mood === moodFilter);
+        }
+
+        // Appliquer le tri
+        const sortSelect = document.getElementById('sortHistory');
+        const sortValue = sortSelect ? sortSelect.value : 'date-desc';
+
+        switch(sortValue) {
+            case 'date-asc':
+                data.sort((a, b) => new Date(a.date) - new Date(b.date));
+                break;
+            case 'date-desc':
+                data.sort((a, b) => new Date(b.date) - new Date(a.date));
+                break;
+            case 'count-asc':
+                data.sort((a, b) => (a.count || 0) - (b.count || 0));
+                break;
+            case 'count-desc':
+                data.sort((a, b) => (b.count || 0) - (a.count || 0));
+                break;
+            default:
+                data.sort((a, b) => new Date(b.date) - new Date(a.date));
+        }
+
+        // Afficher
+        if (data.length === 0) {
+            tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #999;">
+                            Aucune donnée trouvée avec ces filtres
+                        </td>
+                    </tr>
+                `;
+            return;
+        }
+
+        tbody.innerHTML = '';
+        const pricePerCig = (userData.pricePerPack || 10) / 20;
+
+        // Limiter à 50 entrées pour éviter les problèmes de performance
+        const displayData = data.slice(0, 50);
+
+        displayData.forEach(c => {
+            const row = document.createElement('tr');
+            const count = c.count || 0;
+            const diff = userData.dailyGoal - count;
+            const diffStr = diff >= 0 ?
+                `<span style="color: var(--success);">-${diff} ✓</span>` :
+                `<span style="color: var(--danger);">+${Math.abs(diff)} ✗</span>`;
+
+            const dateStr = new Date(c.date).toLocaleDateString('fr-FR');
+            const cost = (count * pricePerCig).toFixed(2);
+
+            row.innerHTML = `
+                    <td>${dateStr}</td>
+                    <td><strong>${count}</strong></td>
+                    <td>${cost}€</td>
+                    <td>${c.mood || '-'}</td>
+                    <td>${diffStr}</td>
+                    <td>
+                        <button class="btn-small btn-edit" onclick="editEntry('${c.date}')">✏️</button>
+                        <button class="btn-small btn-delete" onclick="deleteEntry('${c.date}')">🗑️</button>
+                    </td>
+                `;
+            tbody.appendChild(row);
+        });
+
+        // Ajouter une note si plus de 50 entrées
+        if (data.length > 50) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                    <td colspan="6" style="text-align: center; color: #999; padding: 10px;">
+                        ... et ${data.length - 50} autres entrées
+                    </td>
+                `;
+            tbody.appendChild(row);
+        }
+    }
+
+    function filterHistory() {
+        updateHistory();
+    }
+
+    function sortHistory() {
+        const sortSelect = document.getElementById('sortHistory');
+        if (sortSelect) {
+            currentSort = sortSelect.value;
+            updateHistory();
+        }
+    }
+
+    function editEntry(date) {
+        const entry = userData.consumptions ? userData.consumptions.find(c => c.date === date) : null;
+        if (entry) {
+            document.getElementById('date').value = date;
+            document.getElementById('cigaretteCount').value = entry.count;
+            document.getElementById('mood').value = entry.mood || '😐';
+
+            // Scroll vers le formulaire
+            const firstCard = document.querySelector('.card');
+            if (firstCard) {
+                firstCard.scrollIntoView({ behavior: 'smooth' });
+            }
+
+            showNotification('Modifiez et enregistrez', 'success');
+        }
+    }
+
+    function deleteEntry(date) {
+        if (confirm('Supprimer cette entrée ?')) {
+            if (userData.consumptions) {
+                userData.consumptions = userData.consumptions.filter(c => c.date !== date);
+                saveData();
+                updateDisplay();
+                showNotification('Entrée supprimée', 'success');
+            }
+        }
+    }
+
+    // Objectifs
+    function updateGoal() {
+        const goalInput = document.getElementById('dailyGoal');
+        if (goalInput) {
+            const value = parseInt(goalInput.value);
+            if (!isNaN(value) && value >= 0 && value <= 100) {
+                userData.dailyGoal = value;
+                saveData();
+                updateDisplay();
+                showNotification('Objectif mis à jour', 'success');
+            } else {
+                goalInput.value = userData.dailyGoal;
+                showNotification('Valeur invalide (0-100)', 'warning');
+            }
+        }
+    }
+
+    function updatePrice() {
+        const priceInput = document.getElementById('pricePerPack');
+        if (priceInput) {
+            const value = parseFloat(priceInput.value);
+            if (!isNaN(value) && value >= 0 && value <= 100) {
+                userData.pricePerPack = value;
+                saveData();
+                updateDisplay();
+                showNotification('Prix mis à jour', 'success');
+            } else {
+                priceInput.value = userData.pricePerPack;
+                showNotification('Prix invalide (0-100€)', 'warning');
+            }
+        }
+    }
+
+    // Export/Import
+    function exportData() {
+        const dataStr = JSON.stringify(userData, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `stopclope-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        showNotification('Données exportées', 'success');
+    }
+
+    function resetData() {
+        if (confirm('Effacer toutes les données ?')) {
+            localStorage.removeItem('stopClopeData');
+            location.reload();
+        }
+    }
+
+    // Générer données de démo
+    function generateDemoData() {
+        const today = new Date();
+        const demoData = [];
+
+        for (let i = 29; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(today.getDate() - i);
+            const dateStr = date.toISOString().split('T')[0];
+
+            const count = Math.max(3, 15 - Math.floor(i / 3) + Math.floor(Math.random() * 3));
+            const moods = ['😊', '🙂', '😐', '😔', '😤'];
+            const mood = moods[Math.floor(Math.random() * moods.length)];
+
+            demoData.push({ date: dateStr, count, mood });
+        }
+
+        userData.consumptions = demoData;
+        userData.points = 250;
+        userData.totalCigarettesAvoided = 50;
+
+        saveData();
+        updateDisplay();
+        showNotification('30 jours de données de démonstration ajoutées !', 'success');
+    }
+
+    // Rendre les fonctions globales pour les boutons onclick
+    window.addConsumption = addConsumption;
+    window.updateGoal = updateGoal;
+    window.updatePrice = updatePrice;
+    window.exportData = exportData;
+    window.resetData = resetData;
+    window.generateDemoData = generateDemoData;
+    window.filterHistory = filterHistory;
+    window.sortHistory = sortHistory;
+    window.editEntry = editEntry;
+    window.deleteEntry = deleteEntry;
+
+    // Démarrage
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

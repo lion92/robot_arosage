@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fonds Marins 3D Interactifs</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    #scene-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    #controls {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 20, 40, 0.8);
+      color: white;
+      padding: 15px;
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+      z-index: 1000;
+    }
+    #controls h3 {
+      margin: 0 0 10px 0;
+      color: #4dd0e1;
+    }
+    #controls p {
+      margin: 5px 0;
+      font-size: 14px;
+    }
+    #loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 24px;
+      z-index: 2000;
+    }
+    #crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px;
+      height: 40px;
+      border: 2px solid rgba(255, 255, 255, 0.7);
+      border-radius: 50%;
+      z-index: 100;
+      pointer-events: none;
+    }
+    #crosshair::before,
+    #crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(255, 255, 255, 0.7);
+    }
+    #crosshair::before {
+      width: 2px;
+      height: 20px;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+    #crosshair::after {
+      width: 20px;
+      height: 2px;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+    #score {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 20, 40, 0.8);
+      color: white;
+      padding: 15px;
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+      z-index: 1000;
+      font-size: 18px;
+    }
+    #score span {
+      color: #ffd700;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+<div id="loading">Chargement de l'océan...</div>
+<div id="scene-container"></div>
+<div id="crosshair"></div>
+<div id="score">🎣 Poissons capturés: <span id="fish-count">0</span></div>
+<div id="controls">
+  <h3>🌊 Exploration Sous-Marine</h3>
+  <p>🖱️ <strong>Souris:</strong> Regarder/Viser</p>
+  <p>⬆️⬇️⬅️➡️ <strong>Flèches:</strong> Se déplacer</p>
+  <p>🎯 <strong>Clic gauche:</strong> Lancer le harpon</p>
+  <p>📏 <strong>Molette:</strong> Zoom</p>
+  <p>⚡ <strong>Espace:</strong> Tir rapide</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+  // Configuration de la scène
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  document.getElementById('scene-container').appendChild(renderer.domElement);
+
+  // Masquer le message de chargement
+  document.getElementById('loading').style.display = 'none';
+
+  // Fog sous-marin
+  scene.fog = new THREE.FogExp2(0x004080, 0.02);
+  renderer.setClearColor(0x001030);
+
+  // Position initiale de la caméra
+  camera.position.set(0, 5, 20);
+
+  // Lumières
+  const ambientLight = new THREE.AmbientLight(0x1a4d80, 0.4);
+  scene.add(ambientLight);
+
+  const sunLight = new THREE.DirectionalLight(0x4dd0e1, 0.8);
+  sunLight.position.set(10, 30, 10);
+  sunLight.castShadow = true;
+  sunLight.shadow.camera.near = 0.1;
+  sunLight.shadow.camera.far = 100;
+  sunLight.shadow.camera.left = -50;
+  sunLight.shadow.camera.right = 50;
+  sunLight.shadow.camera.top = 50;
+  sunLight.shadow.camera.bottom = -50;
+  scene.add(sunLight);
+
+  // Lumières volumétriques
+  const pointLight1 = new THREE.PointLight(0x00ffff, 1, 30);
+  pointLight1.position.set(-10, 10, -10);
+  scene.add(pointLight1);
+
+  const pointLight2 = new THREE.PointLight(0x0080ff, 1, 30);
+  pointLight2.position.set(10, 5, 10);
+  scene.add(pointLight2);
+
+  // Fond marin
+  const seabedGeometry = new THREE.PlaneGeometry(200, 200, 50, 50);
+  const seabedMaterial = new THREE.MeshLambertMaterial({
+    color: 0x1a3d5c,
+    wireframe: false
+  });
+  const seabed = new THREE.Mesh(seabedGeometry, seabedMaterial);
+  seabed.rotation.x = -Math.PI / 2;
+  seabed.position.y = -10;
+  seabed.receiveShadow = true;
+
+  // Ajouter du relief au fond marin
+  const vertices = seabed.geometry.attributes.position.array;
+  for (let i = 0; i < vertices.length; i += 3) {
+    vertices[i + 2] = Math.sin(vertices[i] * 0.1) * Math.cos(vertices[i + 1] * 0.1) * 2;
+  }
+  seabed.geometry.attributes.position.needsUpdate = true;
+  seabed.geometry.computeVertexNormals();
+  scene.add(seabed);
+
+  // Rochers
+  function createRock(x, y, z) {
+    const rockGeometry = new THREE.DodecahedronGeometry(Math.random() * 3 + 1, 0);
+    const rockMaterial = new THREE.MeshPhongMaterial({
+      color: 0x2d4a5d,
+      flatShading: true
+    });
+    const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+    rock.position.set(x, y, z);
+    rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+    rock.castShadow = true;
+    rock.receiveShadow = true;
+    return rock;
+  }
+
+  for (let i = 0; i < 15; i++) {
+    const rock = createRock(
+            Math.random() * 60 - 30,
+            -8 + Math.random() * 2,
+            Math.random() * 60 - 30
+    );
+    scene.add(rock);
+  }
+
+  // Coraux
+  function createCoral(x, y, z, color) {
+    const coralGroup = new THREE.Group();
+
+    for (let i = 0; i < 5; i++) {
+      const branchGeometry = new THREE.CylinderGeometry(0.1 + i * 0.05, 0.3 + i * 0.1, 2 + Math.random() * 2, 6);
+      const coralMaterial = new THREE.MeshPhongMaterial({
+        color: color,
+        emissive: color,
+        emissiveIntensity: 0.2
+      });
+      const branch = new THREE.Mesh(branchGeometry, coralMaterial);
+      branch.position.set(
+              Math.random() * 2 - 1,
+              Math.random() * 2,
+              Math.random() * 2 - 1
+      );
+      branch.rotation.z = Math.random() * 0.5 - 0.25;
+      coralGroup.add(branch);
+    }
+
+    coralGroup.position.set(x, y, z);
+    return coralGroup;
+  }
+
+  // Ajouter plusieurs coraux
+  const coralColors = [0xff6b9d, 0xfeca57, 0xff9ff3, 0x48dbfb, 0x00d2d3];
+  for (let i = 0; i < 8; i++) {
+    const coral = createCoral(
+            Math.random() * 40 - 20,
+            -8 + Math.random() * 2,
+            Math.random() * 40 - 20,
+            coralColors[Math.floor(Math.random() * coralColors.length)]
+    );
+    scene.add(coral);
+  }
+
+  // Algues
+  const algae = [];
+  function createKelp(x, z) {
+    const kelpGroup = new THREE.Group();
+    const height = 5 + Math.random() * 10;
+    const segments = 10;
+
+    const kelpGeometry = new THREE.CylinderGeometry(0.2, 0.4, height, 4, segments);
+    const kelpMaterial = new THREE.MeshPhongMaterial({
+      color: 0x2d5016,
+      side: THREE.DoubleSide
+    });
+    const kelp = new THREE.Mesh(kelpGeometry, kelpMaterial);
+    kelp.position.y = height / 2 - 8;
+
+    // Modifier les vertices pour donner une forme ondulée
+    const vertices = kelp.geometry.attributes.position.array;
+    for (let i = 0; i < vertices.length; i += 3) {
+      const y = vertices[i + 1];
+      vertices[i] += Math.sin(y * 0.5) * 0.3;
+      vertices[i + 2] += Math.cos(y * 0.5) * 0.3;
+    }
+    kelp.geometry.attributes.position.needsUpdate = true;
+
+    kelpGroup.add(kelp);
+    kelpGroup.position.set(x, 0, z);
+    kelpGroup.userData = { baseX: x, baseZ: z };
+
+    return kelpGroup;
+  }
+
+  for (let i = 0; i < 20; i++) {
+    const kelp = createKelp(
+            Math.random() * 50 - 25,
+            Math.random() * 50 - 25
+    );
+    algae.push(kelp);
+    scene.add(kelp);
+  }
+
+  // Classe pour les poissons
+  class Fish {
+    constructor(color, size, speed) {
+      this.speed = speed;
+      this.turnSpeed = 0.02;
+      this.verticalSpeed = 0.005;
+      this.size = size;
+      this.isAlive = true;
+      this.isCaught = false;
+
+      // Corps du poisson
+      const bodyGeometry = new THREE.SphereGeometry(size, 8, 6);
+      bodyGeometry.scale(2, 1, 0.7);
+      const bodyMaterial = new THREE.MeshPhongMaterial({
+        color: color,
+        shininess: 100
+      });
+
+      this.group = new THREE.Group();
+
+      const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+      this.group.add(body);
+
+      // Queue
+      const tailGeometry = new THREE.ConeGeometry(size * 0.7, size * 2, 4);
+      const tail = new THREE.Mesh(tailGeometry, bodyMaterial);
+      tail.rotation.z = Math.PI / 2;
+      tail.position.x = -size * 2;
+      this.group.add(tail);
+
+      // Nageoires
+      const finGeometry = new THREE.ConeGeometry(size * 0.5, size * 1.5, 3);
+      const topFin = new THREE.Mesh(finGeometry, bodyMaterial);
+      topFin.position.y = size;
+      topFin.rotation.x = Math.PI;
+      this.group.add(topFin);
+
+      // Oeil
+      const eyeGeometry = new THREE.SphereGeometry(size * 0.2, 6, 6);
+      const eyeMaterial = new THREE.MeshPhongMaterial({
+        color: 0x000000,
+        emissive: 0xffffff,
+        emissiveIntensity: 0.3
+      });
+      const eye1 = new THREE.Mesh(eyeGeometry, eyeMaterial);
+      eye1.position.set(size * 0.8, size * 0.3, size * 0.5);
+      this.group.add(eye1);
+
+      const eye2 = new THREE.Mesh(eyeGeometry, eyeMaterial);
+      eye2.position.set(size * 0.8, size * 0.3, -size * 0.5);
+      this.group.add(eye2);
+
+      // Position initiale aléatoire
+      this.group.position.set(
+              Math.random() * 60 - 30,
+              Math.random() * 10 - 2,
+              Math.random() * 60 - 30
+      );
+
+      this.direction = new THREE.Vector3(
+              Math.random() - 0.5,
+              (Math.random() - 0.5) * 0.2,
+              Math.random() - 0.5
+      ).normalize();
+
+      this.group.castShadow = true;
+      this.time = Math.random() * Math.PI * 2;
+      this.group.userData = { fish: this };
+    }
+
+    catch() {
+      if (!this.isCaught) {
+        this.isCaught = true;
+        this.isAlive = false;
+        return true;
+      }
+      return false;
+    }
+
+    update(deltaTime) {
+      if (!this.isAlive) {
+        // Animation de capture
+        this.group.scale.x *= 0.95;
+        this.group.scale.y *= 0.95;
+        this.group.scale.z *= 0.95;
+        this.group.rotation.x += 0.2;
+        this.group.rotation.y += 0.3;
+        this.group.position.y += 0.2;
+
+        if (this.group.scale.x < 0.01) {
+          this.group.visible = false;
+        }
+        return;
+      }
+
+      this.time += deltaTime * 3;
+
+      // Mouvement ondulatoire
+      this.group.rotation.y += Math.sin(this.time) * 0.01;
+
+      // Déplacement
+      this.group.position.add(this.direction.clone().multiplyScalar(this.speed));
+
+      // Limites et changement de direction
+      if (Math.abs(this.group.position.x) > 40 ||
+              Math.abs(this.group.position.z) > 40 ||
+              this.group.position.y > 15 ||
+              this.group.position.y < -5) {
+
+        this.direction.x = -this.direction.x + (Math.random() - 0.5) * 0.2;
+        this.direction.z = -this.direction.z + (Math.random() - 0.5) * 0.2;
+        this.direction.y = -this.direction.y;
+        this.direction.normalize();
+      }
+
+      // Changement de direction aléatoire
+      if (Math.random() < 0.01) {
+        this.direction.x += (Math.random() - 0.5) * 0.3;
+        this.direction.z += (Math.random() - 0.5) * 0.3;
+        this.direction.y += (Math.random() - 0.5) * 0.1;
+        this.direction.normalize();
+      }
+
+      // Orienter le poisson dans la direction du mouvement
+      const targetRotation = Math.atan2(this.direction.x, this.direction.z);
+      this.group.rotation.y = THREE.MathUtils.lerp(this.group.rotation.y, targetRotation, 0.1);
+
+      // Inclinaison en fonction de la direction verticale
+      this.group.rotation.x = this.direction.y * 0.5;
+
+      // Animation de la queue
+      if (this.group.children[1]) {
+        this.group.children[1].rotation.y = Math.sin(this.time * 2) * 0.3;
+      }
+    }
+  }
+
+  // Créer un banc de poissons
+  const fishes = [];
+  const fishColors = [0xffa500, 0xff6347, 0xffff00, 0x00ffff, 0xff1493, 0x9370db];
+
+  for (let i = 0; i < 15; i++) {
+    const fish = new Fish(
+            fishColors[Math.floor(Math.random() * fishColors.length)],
+            0.3 + Math.random() * 0.4,
+            0.1 + Math.random() * 0.1
+    );
+    fishes.push(fish);
+    scene.add(fish.group);
+  }
+
+  // Bulles
+  const bubbles = [];
+  function createBubble() {
+    const bubbleGeometry = new THREE.SphereGeometry(0.1 + Math.random() * 0.2, 8, 8);
+    const bubbleMaterial = new THREE.MeshPhongMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.4,
+      emissive: 0x4dd0e1,
+      emissiveIntensity: 0.3
+    });
+    const bubble = new THREE.Mesh(bubbleGeometry, bubbleMaterial);
+    bubble.position.set(
+            Math.random() * 40 - 20,
+            -10,
+            Math.random() * 40 - 20
+    );
+    bubble.velocity = 0.05 + Math.random() * 0.05;
+    return bubble;
+  }
+
+  for (let i = 0; i < 30; i++) {
+    const bubble = createBubble();
+    bubbles.push(bubble);
+    scene.add(bubble);
+  }
+
+  // Particules (plancton)
+  const particlesGeometry = new THREE.BufferGeometry();
+  const particlesCount = 500;
+  const positions = new Float32Array(particlesCount * 3);
+
+  for (let i = 0; i < particlesCount * 3; i += 3) {
+    positions[i] = Math.random() * 80 - 40;
+    positions[i + 1] = Math.random() * 30 - 10;
+    positions[i + 2] = Math.random() * 80 - 40;
+  }
+
+  particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const particlesMaterial = new THREE.PointsMaterial({
+    color: 0x88ccff,
+    size: 0.1,
+    transparent: true,
+    opacity: 0.6
+  });
+  const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+  scene.add(particles);
+
+  // Contrôles de la caméra et système de harpon
+  let mouseX = 0, mouseY = 0;
+  let targetX = 0, targetY = 0;
+  const movement = { forward: false, backward: false, left: false, right: false };
+  let score = 0;
+  const harpoons = [];
+
+  // Raycaster pour détecter les clics sur les poissons
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+
+  // Classe Harpon
+  class Harpoon {
+    constructor(origin, direction) {
+      const geometry = new THREE.CylinderGeometry(0.05, 0.1, 3, 8);
+      const material = new THREE.MeshPhongMaterial({
+        color: 0x8b4513,
+        emissive: 0xffffff,
+        emissiveIntensity: 0.1
+      });
+      this.mesh = new THREE.Mesh(geometry, material);
+      this.mesh.position.copy(origin);
+
+      // Pointe du harpon
+      const tipGeometry = new THREE.ConeGeometry(0.15, 0.5, 8);
+      const tipMaterial = new THREE.MeshPhongMaterial({
+        color: 0x4a4a4a,
+        shininess: 100
+      });
+      const tip = new THREE.Mesh(tipGeometry, tipMaterial);
+      tip.position.y = 1.75;
+      this.mesh.add(tip);
+
+      this.velocity = direction.clone().multiplyScalar(2);
+      this.mesh.lookAt(origin.clone().add(direction));
+      this.mesh.rotateX(Math.PI / 2);
+
+      scene.add(this.mesh);
+      this.lifeTime = 2;
+    }
+
+    update(deltaTime) {
+      this.mesh.position.add(this.velocity.clone().multiplyScalar(deltaTime * 10));
+      this.lifeTime -= deltaTime;
+
+      // Vérifier les collisions avec les poissons
+      fishes.forEach(fish => {
+        if (fish.isAlive) {
+          const distance = this.mesh.position.distanceTo(fish.group.position);
+          if (distance < fish.size * 3) {
+            if (fish.catch()) {
+              score++;
+              document.getElementById('fish-count').textContent = score;
+
+              // Effet visuel de capture
+              const flashGeometry = new THREE.SphereGeometry(2, 8, 8);
+              const flashMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffff00,
+                transparent: true,
+                opacity: 0.5
+              });
+              const flash = new THREE.Mesh(flashGeometry, flashMaterial);
+              flash.position.copy(fish.group.position);
+              scene.add(flash);
+
+              setTimeout(() => {
+                scene.remove(flash);
+              }, 200);
+            }
+          }
+        }
+      });
+
+      if (this.lifeTime <= 0) {
+        scene.remove(this.mesh);
+        return true;
+      }
+      return false;
+    }
+  }
+
+  // Tir de harpon
+  function shootHarpoon() {
+    const origin = camera.position.clone();
+    const direction = new THREE.Vector3(0, 0, -1);
+    direction.applyQuaternion(camera.quaternion);
+
+    const harpoon = new Harpoon(origin, direction);
+    harpoons.push(harpoon);
+
+    // Son de tir (simulé par un flash visuel)
+    const crosshair = document.getElementById('crosshair');
+    crosshair.style.borderColor = 'red';
+    setTimeout(() => {
+      crosshair.style.borderColor = 'rgba(255, 255, 255, 0.7)';
+    }, 100);
+  }
+
+  document.addEventListener('mousemove', (event) => {
+    mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+    mouseY = (event.clientY / window.innerHeight) * 2 - 1;
+    mouse.x = mouseX;
+    mouse.y = -mouseY;
+  });
+
+  document.addEventListener('click', (event) => {
+    shootHarpoon();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    switch(event.key) {
+      case 'ArrowUp': movement.forward = true; break;
+      case 'ArrowDown': movement.backward = true; break;
+      case 'ArrowLeft': movement.left = true; break;
+      case 'ArrowRight': movement.right = true; break;
+      case ' ':
+        event.preventDefault();
+        shootHarpoon();
+        break;
+    }
+  });
+
+  document.addEventListener('keyup', (event) => {
+    switch(event.key) {
+      case 'ArrowUp': movement.forward = false; break;
+      case 'ArrowDown': movement.backward = false; break;
+      case 'ArrowLeft': movement.left = false; break;
+      case 'ArrowRight': movement.right = false; break;
+    }
+  });
+
+  // Zoom avec la molette
+  document.addEventListener('wheel', (event) => {
+    camera.position.z += event.deltaY * 0.01;
+    camera.position.z = Math.max(5, Math.min(50, camera.position.z));
+  });
+
+  // Animation
+  const clock = new THREE.Clock();
+
+  function animate() {
+    requestAnimationFrame(animate);
+
+    const deltaTime = clock.getDelta();
+    const time = clock.getElapsedTime();
+
+    // Mouvement de la caméra avec la souris
+    targetX = mouseX * 30;
+    targetY = mouseY * 10;
+
+    camera.position.x += (targetX - camera.position.x) * 0.02;
+    camera.position.y += (targetY - camera.position.y) * 0.02;
+
+    // Mouvement avec les touches
+    const moveSpeed = 0.3;
+    if (movement.forward) camera.position.z -= moveSpeed;
+    if (movement.backward) camera.position.z += moveSpeed;
+    if (movement.left) camera.position.x -= moveSpeed;
+    if (movement.right) camera.position.x += moveSpeed;
+
+    camera.lookAt(0, 0, 0);
+
+    // Animation des poissons
+    fishes.forEach(fish => fish.update(deltaTime));
+
+    // Mise à jour des harpons
+    for (let i = harpoons.length - 1; i >= 0; i--) {
+      if (harpoons[i].update(deltaTime)) {
+        harpoons.splice(i, 1);
+      }
+    }
+
+    // Respawn des poissons
+    const aliveFishes = fishes.filter(f => f.isAlive).length;
+    if (aliveFishes < 5 && Math.random() < 0.01) {
+      const newFish = new Fish(
+              fishColors[Math.floor(Math.random() * fishColors.length)],
+              0.3 + Math.random() * 0.4,
+              0.1 + Math.random() * 0.1
+      );
+      fishes.push(newFish);
+      scene.add(newFish.group);
+    }
+
+    // Animation des algues
+    algae.forEach((kelp, index) => {
+      kelp.rotation.z = Math.sin(time + index) * 0.1;
+      kelp.rotation.x = Math.cos(time + index * 0.5) * 0.05;
+    });
+
+    // Animation des bulles
+    bubbles.forEach(bubble => {
+      bubble.position.y += bubble.velocity;
+      bubble.position.x += Math.sin(time + bubble.position.y) * 0.01;
+
+      if (bubble.position.y > 20) {
+        bubble.position.y = -10;
+        bubble.position.x = Math.random() * 40 - 20;
+        bubble.position.z = Math.random() * 40 - 20;
+      }
+    });
+
+    // Animation des particules
+    particles.rotation.y += 0.0005;
+    const particlePositions = particles.geometry.attributes.position.array;
+    for (let i = 0; i < particlePositions.length; i += 3) {
+      particlePositions[i + 1] += Math.sin(time + i) * 0.002;
+    }
+    particles.geometry.attributes.position.needsUpdate = true;
+
+    // Animation des lumières
+    pointLight1.position.x = Math.sin(time * 0.5) * 20;
+    pointLight1.position.z = Math.cos(time * 0.5) * 20;
+
+    pointLight2.position.x = Math.cos(time * 0.3) * 15;
+    pointLight2.position.z = Math.sin(time * 0.3) * 15;
+
+    renderer.render(scene, camera);
+  }
+
+  animate();
+
+  // Redimensionnement
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,2486 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StopClope Pro - Arrêt du Tabac Gamifié</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #667eea;
+      --secondary: #764ba2;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --dark: #1f2937;
+      --light: #f3f4f6;
+      --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--gradient);
+      min-height: 100vh;
+      padding: 10px;
+      color: #333;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .header {
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 20px;
+      padding: 15px 25px;
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.8em;
+      font-weight: bold;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .user-stats {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .stat-badge {
+      background: var(--gradient);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 25px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+
+    .stat-badge:hover {
+      transform: scale(1.05);
+    }
+
+    .stat-badge.success {
+      background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    .stat-badge.warning {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 15px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      animation: slideUp 0.5s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--light);
+    }
+
+    .card-title {
+      font-size: 1.2em;
+      font-weight: 600;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .quick-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin-bottom: 15px;
+      background: white;
+      padding: 15px;
+      border-radius: 15px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    }
+
+    .quick-stat {
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+      padding: 15px 10px;
+      border-radius: 10px;
+      text-align: center;
+      border: 1px solid rgba(102, 126, 234, 0.2);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .quick-stat:hover {
+      transform: scale(1.05);
+      border-color: var(--primary);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+    }
+
+    .quick-stat-value {
+      font-size: 1.8em;
+      font-weight: bold;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .quick-stat-label {
+      color: #666;
+      font-size: 0.85em;
+      margin-top: 5px;
+    }
+
+    .input-group {
+      margin-bottom: 15px;
+    }
+
+    .input-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #555;
+      font-weight: 500;
+      font-size: 0.9em;
+    }
+
+    .input-group input, .input-group select {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1em;
+      transition: all 0.3s ease;
+      background: white;
+    }
+
+    .input-group input:focus, .input-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn {
+      background: var(--gradient);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 0.95em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: rgba(255,255,255,0.2);
+      transition: left 0.5s ease;
+    }
+
+    .btn:hover::before {
+      left: 100%;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #6b7280, #4b5563);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+
+    .btn-group {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .challenge-grid {
+      display: grid;
+      gap: 10px;
+      max-height: 400px;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+
+    .challenge-item {
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+      border: 2px solid rgba(102, 126, 234, 0.2);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .challenge-item:hover {
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+      transform: translateX(5px);
+      border-color: var(--primary);
+    }
+
+    .challenge-item.completed {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.15));
+      border-color: var(--success);
+    }
+
+    .challenge-item.completed::after {
+      content: '✓';
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      color: var(--success);
+      font-weight: bold;
+      font-size: 1.2em;
+    }
+
+    .challenge-info {
+      flex: 1;
+      padding-right: 10px;
+    }
+
+    .challenge-name {
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .challenge-desc {
+      font-size: 0.85em;
+      color: #666;
+    }
+
+    .challenge-progress {
+      margin-top: 5px;
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .challenge-progress-bar {
+      height: 100%;
+      background: var(--gradient);
+      transition: width 0.5s ease;
+    }
+
+    .challenge-points {
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 15px;
+      font-weight: bold;
+      font-size: 0.85em;
+      box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
+    }
+
+    .chart-container {
+      position: relative;
+      height: 250px;
+      margin-top: 15px;
+    }
+
+    .progress-ring {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 20px 0;
+      position: relative;
+    }
+
+    .progress-ring svg {
+      transform: rotate(-90deg);
+    }
+
+    .progress-center {
+      position: absolute;
+      text-align: center;
+    }
+
+    .timeline {
+      display: flex;
+      gap: 4px;
+      margin-top: 15px;
+      overflow-x: auto;
+      padding: 10px 0;
+    }
+
+    .timeline-day {
+      min-width: 35px;
+      height: 35px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75em;
+      font-weight: 600;
+      color: white;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .timeline-day:hover {
+      transform: scale(1.1);
+      z-index: 10;
+    }
+
+    .timeline-day.low { background: linear-gradient(135deg, #10b981, #059669); }
+    .timeline-day.medium { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .timeline-day.high { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .timeline-day.zero { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+    .timeline-day.empty { background: #e0e0e0; color: #999; }
+
+    .achievement-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .achievement {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8em;
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+      border: 3px solid rgba(102, 126, 234, 0.3);
+      position: relative;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .achievement.unlocked {
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      border-color: #f59e0b;
+      animation: achievementUnlock 0.5s ease;
+      box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4);
+    }
+
+    @keyframes achievementUnlock {
+      0% { transform: scale(0) rotate(0deg); }
+      50% { transform: scale(1.2) rotate(180deg); }
+      100% { transform: scale(1) rotate(360deg); }
+    }
+
+    .achievement:hover {
+      transform: scale(1.15) rotate(5deg);
+    }
+
+    .tooltip {
+      position: absolute;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--dark);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.8em;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .achievement:hover .tooltip {
+      opacity: 1;
+    }
+
+    .health-benefits {
+      display: grid;
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    .benefit-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: rgba(229, 231, 235, 0.3);
+      border-radius: 10px;
+      font-size: 0.9em;
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+    }
+
+    .benefit-item.unlocked {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.15));
+      border-color: var(--success);
+      animation: benefitPulse 1s ease;
+    }
+
+    @keyframes benefitPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+
+    .benefit-icon {
+      font-size: 1.8em;
+      filter: grayscale(100%);
+      transition: filter 0.5s ease;
+    }
+
+    .benefit-item.unlocked .benefit-icon {
+      filter: grayscale(0%);
+    }
+
+    .benefit-content {
+      flex: 1;
+    }
+
+    .benefit-title {
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .benefit-desc {
+      font-size: 0.85em;
+      color: #666;
+    }
+
+    .motivational-quote {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(124, 58, 237, 0.1));
+      border-left: 3px solid #8b5cf6;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      font-style: italic;
+      color: #555;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .motivational-quote::before {
+      content: '"';
+      position: absolute;
+      top: -10px;
+      left: 10px;
+      font-size: 3em;
+      color: rgba(139, 92, 246, 0.2);
+    }
+
+    .level-indicator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.1));
+      border-radius: 10px;
+      margin-bottom: 15px;
+    }
+
+    .level-badge {
+      font-size: 2em;
+    }
+
+    .level-info {
+      flex: 1;
+    }
+
+    .level-title {
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .level-progress {
+      margin-top: 5px;
+      height: 8px;
+      background: #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .level-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b);
+      transition: width 0.5s ease;
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      display: none;
+      animation: slideInRight 0.5s ease;
+      z-index: 2000;
+      max-width: 350px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .notification.success { border-left-color: var(--success); }
+    .notification.warning { border-left-color: var(--warning); }
+    .notification.danger { border-left-color: var(--danger); }
+    .notification.info { border-left-color: var(--primary); }
+
+    @keyframes slideInRight {
+      from { transform: translateX(120%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--gradient);
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(135deg, #5a67d8, #6b46c1);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 3000;
+      justify-content: center;
+      align-items: center;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      max-width: 500px;
+      width: 90%;
+      animation: slideUp 0.3s ease;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .modal-header {
+      font-size: 1.5em;
+      font-weight: bold;
+      margin-bottom: 20px;
+      color: var(--dark);
+    }
+
+    .modal-close {
+      float: right;
+      font-size: 1.5em;
+      cursor: pointer;
+      color: #999;
+      transition: color 0.3s ease;
+    }
+
+    .modal-close:hover {
+      color: var(--danger);
+    }
+
+    @media (max-width: 768px) {
+      .header {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .user-stats {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .btn-group {
+        grid-template-columns: 1fr;
+      }
+
+      .input-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <!-- Header Principal -->
+  <div class="header">
+    <div class="logo">
+      <span>🚭</span>
+      <span>StopClope Pro</span>
+    </div>
+    <div class="user-stats">
+      <div class="stat-badge" onclick="showPointsDetails()">
+        <span>🏆</span>
+        <span id="totalPoints">0 pts</span>
+      </div>
+      <div class="stat-badge success" onclick="showStreakDetails()">
+        <span>🔥</span>
+        <span id="currentStreak">0 jours</span>
+      </div>
+      <div class="stat-badge warning" onclick="showSavingsDetails()">
+        <span>💰</span>
+        <span id="moneySaved">0€</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistiques Rapides -->
+  <div class="quick-stats">
+    <div class="quick-stat" onclick="showTodayDetails()">
+      <div class="quick-stat-value" id="todayCount">0</div>
+      <div class="quick-stat-label">Aujourd'hui</div>
+    </div>
+    <div class="quick-stat">
+      <div class="quick-stat-value" id="weekAvg">0</div>
+      <div class="quick-stat-label">Moy. 7 jours</div>
+    </div>
+    <div class="quick-stat">
+      <div class="quick-stat-value" id="monthTotal">0</div>
+      <div class="quick-stat-label">Total mois</div>
+    </div>
+    <div class="quick-stat">
+      <div class="quick-stat-value" id="reduction">0%</div>
+      <div class="quick-stat-label">Réduction</div>
+    </div>
+    <div class="quick-stat">
+      <div class="quick-stat-value" id="daysTracked">0</div>
+      <div class="quick-stat-label">Jours suivis</div>
+    </div>
+    <div class="quick-stat">
+      <div class="quick-stat-value" id="bestDay">-</div>
+      <div class="quick-stat-label">Record</div>
+    </div>
+  </div>
+
+  <!-- Grille principale -->
+  <div class="dashboard-grid">
+    <!-- Carte d'enregistrement -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">
+          <span>📝</span>
+          <span>Enregistrement quotidien</span>
+        </h3>
+      </div>
+
+      <div class="level-indicator">
+        <div class="level-badge" id="levelBadge">🥉</div>
+        <div class="level-info">
+          <div class="level-title">Niveau <span id="currentLevel">1</span> - <span id="levelName">Débutant</span></div>
+          <div class="level-progress">
+            <div class="level-progress-bar" id="levelProgress" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-row">
+        <div class="input-group">
+          <label for="cigaretteCount">Cigarettes fumées</label>
+          <input type="number" id="cigaretteCount" min="0" max="100" placeholder="0">
+        </div>
+        <div class="input-group">
+          <label for="date">Date</label>
+          <input type="date" id="date">
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label for="mood">Comment vous sentez-vous ?</label>
+        <select id="mood">
+          <option value="😊">😊 Excellent - Aucune envie</option>
+          <option value="🙂">🙂 Bien - Gérable</option>
+          <option value="😐">😐 Neutre - Normal</option>
+          <option value="😔">😔 Difficile - Envies fortes</option>
+          <option value="😤">😤 Très difficile - Craving intense</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label for="note">Note personnelle (optionnel)</label>
+        <input type="text" id="note" placeholder="Ex: Stress au travail, soirée entre amis...">
+      </div>
+
+      <button class="btn" onclick="addConsumption()">
+        <span>💾 Enregistrer ma journée</span>
+      </button>
+
+      <!-- Cercle de progression -->
+      <div class="progress-ring">
+        <svg width="140" height="140">
+          <circle cx="70" cy="70" r="60" stroke="#e0e0e0" stroke-width="12" fill="none"/>
+          <circle id="progressCircle" cx="70" cy="70" r="60" stroke="url(#gradient)" stroke-width="12" fill="none"
+                  stroke-dasharray="377" stroke-dashoffset="377" stroke-linecap="round"/>
+          <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#667eea"/>
+              <stop offset="100%" stop-color="#764ba2"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="progress-center">
+          <div style="font-size: 2em; font-weight: bold;" id="progressPercent">0%</div>
+          <div style="font-size: 0.9em; color: #666;">de l'objectif</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Graphique d'évolution -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">
+          <span>📈</span>
+          <span>Évolution sur 30 jours</span>
+        </h3>
+      </div>
+      <div class="chart-container">
+        <canvas id="evolutionChart"></canvas>
+      </div>
+      <div class="timeline" id="timeline"></div>
+      <div class="motivational-quote" id="motivationalQuote">
+        Chaque cigarette non fumée est une victoire !
+      </div>
+    </div>
+
+    <!-- Défis et achievements -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">
+          <span>🎯</span>
+          <span>Défis & Achievements</span>
+        </h3>
+      </div>
+      <div class="challenge-grid" id="challengesList"></div>
+      <div class="achievement-list" id="achievementList"></div>
+    </div>
+
+    <!-- Analyse hebdomadaire -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">
+          <span>📊</span>
+          <span>Analyse hebdomadaire</span>
+        </h3>
+      </div>
+      <div class="chart-container">
+        <canvas id="weekChart"></canvas>
+      </div>
+      <div style="margin-top: 15px; text-align: center; color: #666; font-size: 0.9em;">
+        <strong>Meilleur jour :</strong> <span id="bestDayWeek">-</span> |
+        <strong>Pire jour :</strong> <span id="worstDayWeek">-</span>
+      </div>
+    </div>
+
+    <!-- Bénéfices santé -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">
+          <span>❤️</span>
+          <span>Bénéfices santé</span>
+        </h3>
+      </div>
+      <div class="health-benefits" id="healthBenefits"></div>
+      <div class="btn-group">
+        <button class="btn btn-success" onclick="exportData()">
+          <span>💾 Export</span>
+        </button>
+        <label class="btn btn-secondary" style="text-align: center; margin: 0;">
+          <span>📥 Import</span>
+          <input type="file" accept=".json" onchange="importData(event)" style="display: none;">
+        </label>
+        <button class="btn btn-danger" onclick="confirmReset()">
+          <span>🗑️ Reset</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Objectifs personnalisés -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">
+          <span>⚙️</span>
+          <span>Objectifs personnalisés</span>
+        </h3>
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label for="dailyGoal">Objectif quotidien (max)</label>
+          <input type="number" id="dailyGoal" min="0" max="50" value="10" onchange="updateGoal()">
+        </div>
+        <div class="input-group">
+          <label for="pricePerPack">Prix par paquet (€)</label>
+          <input type="number" id="pricePerPack" min="0" step="0.5" value="10" onchange="updatePrice()">
+        </div>
+      </div>
+      <div class="input-group">
+        <label for="reductionStrategy">Stratégie de réduction</label>
+        <select id="reductionStrategy" onchange="updateStrategy()">
+          <option value="progressive">🎯 Progressive (-10% par semaine)</option>
+          <option value="paliers">📊 Par paliers (-2 toutes les 2 semaines)</option>
+          <option value="radical">⚡ Radicale (-50% immédiat)</option>
+          <option value="custom">✏️ Personnalisée</option>
+        </select>
+      </div>
+      <div class="chart-container">
+        <canvas id="goalChart"></canvas>
+      </div>
+      <div style="margin-top: 15px; padding: 10px; background: rgba(102, 126, 234, 0.1); border-radius: 8px;">
+        <strong>📅 Projection :</strong> À ce rythme, vous atteindrez 0 cigarette dans <span id="projectionDays" style="color: var(--primary); font-weight: bold;">-</span> jours
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal" id="modal">
+  <div class="modal-content">
+    <span class="modal-close" onclick="closeModal()">&times;</span>
+    <div class="modal-header" id="modalTitle">Titre</div>
+    <div id="modalContent">Contenu</div>
+  </div>
+</div>
+
+<!-- Notification -->
+<div class="notification" id="notification"></div>
+
+<script>
+  // Configuration et données utilisateur
+  let userData = {
+    points: 0,
+    level: 1,
+    consumptions: [],
+    challenges: [],
+    achievements: [],
+    streak: 0,
+    bestStreak: 0,
+    dailyGoal: 10,
+    pricePerPack: 10,
+    totalCigarettesAvoided: 0,
+    startDate: new Date().toISOString(),
+    lastLogin: new Date().toISOString(),
+    notes: [],
+    strategy: 'progressive',
+    initialConsumption: 20
+  };
+
+  // Graphiques
+  let evolutionChart, weekChart, goalChart;
+
+  // Niveaux et badges
+  const levels = [
+    { level: 1, name: 'Débutant', badge: '🥉', pointsRequired: 0 },
+    { level: 2, name: 'Motivé', badge: '🥉', pointsRequired: 50 },
+    { level: 3, name: 'Engagé', badge: '🥈', pointsRequired: 150 },
+    { level: 4, name: 'Déterminé', badge: '🥈', pointsRequired: 300 },
+    { level: 5, name: 'Persévérant', badge: '🥇', pointsRequired: 500 },
+    { level: 6, name: 'Champion', badge: '🏆', pointsRequired: 800 },
+    { level: 7, name: 'Expert', badge: '💎', pointsRequired: 1200 },
+    { level: 8, name: 'Maître', badge: '👑', pointsRequired: 1700 },
+    { level: 9, name: 'Légende', badge: '🌟', pointsRequired: 2500 },
+    { level: 10, name: 'Sans Tabac', badge: '🚭', pointsRequired: 3500 }
+  ];
+
+  // Citations motivantes
+  const quotes = [
+    "Chaque cigarette non fumée est une victoire !",
+    "Votre corps vous remercie à chaque instant.",
+    "La liberté commence quand la dépendance s'arrête.",
+    "Vous êtes plus fort que votre addiction.",
+    "Chaque jour sans fumer est un jour gagné.",
+    "Respirez profondément, vous le méritez !",
+    "La santé n'a pas de prix, mais elle a une valeur.",
+    "Continuez, vous êtes sur la bonne voie !",
+    "Les défis d'aujourd'hui sont les victoires de demain.",
+    "Votre volonté est votre plus grande force."
+  ];
+
+  // Défis disponibles
+  const challenges = [
+    { id: 1, name: "Premier pas", desc: "Enregistrez votre première journée", points: 10, icon: "🎉", type: "single", target: 1, progress: 0 },
+    { id: 2, name: "Réduction quotidienne", desc: "2 cigarettes de moins qu'hier", points: 20, icon: "📉", type: "reduction", target: 2, progress: 0 },
+    { id: 3, name: "Matinée pure", desc: "Pas de cigarette avant midi pendant 3 jours", points: 40, icon: "🌅", type: "timing", target: 3, progress: 0 },
+    { id: 4, name: "Semaine en progrès", desc: "7 jours de réduction consécutifs", points: 100, icon: "📅", type: "streak", target: 7, progress: 0 },
+    { id: 5, name: "Sous la barre des 5", desc: "Maximum 5 cigarettes pendant 5 jours", points: 60, icon: "✋", type: "limit", target: 5, progress: 0 },
+    { id: 6, name: "Weekend détox", desc: "50% de moins le weekend", points: 70, icon: "🎊", type: "weekend", target: 2, progress: 0 },
+    { id: 7, name: "Mois victorieux", desc: "30 jours de suivi sans interruption", points: 150, icon: "📆", type: "tracking", target: 30, progress: 0 },
+    { id: 8, name: "Zéro absolu", desc: "24h sans cigarette", points: 100, icon: "💎", type: "zero", target: 1, progress: 0 },
+    { id: 9, name: "Économies remarquables", desc: "Économiser 100€", points: 120, icon: "💰", type: "savings", target: 100, progress: 0 },
+    { id: 10, name: "Marathon santé", desc: "60 jours de progression", points: 300, icon: "🏃", type: "marathon", target: 60, progress: 0 }
+  ];
+
+  // Achievements
+  const achievements = [
+    { id: 'starter', icon: '🌱', name: 'Nouvelle pousse', condition: () => userData.consumptions.length >= 1 },
+    { id: 'week', icon: '📅', name: 'Semaine complète', condition: () => userData.consumptions.length >= 7 },
+    { id: 'month', icon: '🗓️', name: 'Mois entier', condition: () => userData.consumptions.length >= 30 },
+    { id: 'reducer', icon: '📉', name: 'Grand réducteur', condition: () => userData.totalCigarettesAvoided >= 100 },
+    { id: 'saver', icon: '💵', name: 'Économe expert', condition: () => getMoneySaved() >= 200 },
+    { id: 'warrior', icon: '⚔️', name: 'Guerrier anti-tabac', condition: () => userData.bestStreak >= 14 },
+    { id: 'champion', icon: '🥇', name: 'Champion de volonté', condition: () => userData.points >= 1000 },
+    { id: 'hero', icon: '🦸', name: 'Héros sans fumée', condition: () => userData.level >= 5 },
+    { id: 'phoenix', icon: '🔥', name: 'Phénix renaissant', condition: () => getReductionPercentage() >= 75 },
+    { id: 'legend', icon: '👑', name: 'Légende vivante', condition: () => userData.points >= 2000 }
+  ];
+
+  // Bénéfices santé
+  const healthBenefits = [
+    { hours: 0.33, icon: '💓', title: 'Rythme cardiaque', desc: 'Retour à la normale après 20 minutes' },
+    { hours: 8, icon: '🫁', title: 'Oxygénation', desc: 'Niveau d\'oxygène normalisé' },
+    { hours: 24, icon: '❤️', title: 'Risque cardiaque', desc: 'Diminution du risque d\'infarctus' },
+    { hours: 48, icon: '👃', title: 'Sens retrouvés', desc: 'Goût et odorat améliorés' },
+    { hours: 72, icon: '🏃', title: 'Respiration', desc: 'Bronches relaxées, respiration facile' },
+    { hours: 168, icon: '💪', title: 'Circulation', desc: 'Amélioration de la circulation sanguine' },
+    { hours: 720, icon: '🌟', title: 'Énergie', desc: 'Regain d\'énergie significatif' },
+    { hours: 2160, icon: '🎯', title: 'Poumons', desc: 'Fonction pulmonaire améliorée de 30%' },
+    { hours: 8760, icon: '🎉', title: 'Risques divisés', desc: 'Risque cardiovasculaire divisé par 2' }
+  ];
+
+  // Afficher une notification - DOIT ÊTRE DÉFINIE EN PREMIER
+  function showNotification(message, type = 'info') {
+    const notif = document.getElementById('notification');
+    if (!notif) return;
+    notif.textContent = message;
+    notif.className = `notification ${type}`;
+    notif.style.display = 'block';
+
+    setTimeout(() => {
+      notif.style.display = 'none';
+    }, 3500);
+  }
+
+  // Sauvegarder les données
+  function saveData() {
+    try {
+      userData.lastLogin = new Date().toISOString();
+      localStorage.setItem('stopClopeProData', JSON.stringify(userData));
+      console.log('Données sauvegardées');
+    } catch (error) {
+      console.error('Erreur de sauvegarde:', error);
+      if (error.name === 'QuotaExceededError') {
+        showNotification('Espace de stockage insuffisant', 'danger');
+      }
+    }
+  }
+
+  // Charger les données
+  function loadData() {
+    try {
+      const saved = localStorage.getItem('stopClopeProData');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        userData = { ...userData, ...parsed };
+        console.log('Données chargées avec succès');
+      } else {
+        // Première utilisation
+        showNotification('Bienvenue dans StopClope Pro ! 🎉', 'success');
+        saveData();
+      }
+    } catch (error) {
+      console.error('Erreur de chargement:', error);
+      showNotification('Erreur lors du chargement des données', 'danger');
+    }
+
+    // Mettre à jour les champs
+    const dailyGoalEl = document.getElementById('dailyGoal');
+    const pricePerPackEl = document.getElementById('pricePerPack');
+    const strategyEl = document.getElementById('reductionStrategy');
+
+    if (dailyGoalEl) dailyGoalEl.value = userData.dailyGoal;
+    if (pricePerPackEl) pricePerPackEl.value = userData.pricePerPack;
+    if (strategyEl) strategyEl.value = userData.strategy;
+  }
+
+  // Définir la date du jour
+  function setTodayDate() {
+    const today = new Date().toISOString().split('T')[0];
+    const dateEl = document.getElementById('date');
+    if (dateEl) {
+      dateEl.value = today;
+      dateEl.max = today;
+    }
+  }
+
+  // Calculer le streak
+  function calculateStreak() {
+    if (userData.consumptions.length < 2) return 0;
+
+    let streak = 0;
+    const sorted = [...userData.consumptions].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    for (let i = 0; i < sorted.length - 1; i++) {
+      if (sorted[i].count < sorted[i + 1].count) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    if (streak > userData.bestStreak) {
+      userData.bestStreak = streak;
+      saveData();
+    }
+
+    return streak;
+  }
+
+  // Calculer l'argent économisé
+  function getMoneySaved() {
+    const pricePerCig = userData.pricePerPack / 20;
+    return Math.round(userData.totalCigarettesAvoided * pricePerCig);
+  }
+
+  // Moyenne hebdomadaire
+  function getWeekAverage() {
+    const lastWeek = userData.consumptions.slice(-7);
+    if (lastWeek.length === 0) return 0;
+    const sum = lastWeek.reduce((acc, c) => acc + c.count, 0);
+    return sum / lastWeek.length;
+  }
+
+  // Total mensuel
+  function getMonthTotal() {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const monthData = userData.consumptions.filter(c => c.date >= monthStart);
+    return monthData.reduce((acc, c) => acc + c.count, 0);
+  }
+
+  // Pourcentage de réduction
+  function getReductionPercentage() {
+    if (userData.consumptions.length < 2) return 0;
+    const initial = userData.initialConsumption || userData.consumptions[0].count;
+    const recent = userData.consumptions.slice(-7);
+    if (recent.length === 0) return 0;
+    const recentAvg = recent.reduce((acc, c) => acc + c.count, 0) / recent.length;
+    if (initial === 0) return 0;
+    return Math.max(0, Math.round(((initial - recentAvg) / initial) * 100));
+  }
+
+  // Meilleur jour
+  function getBestDay() {
+    if (userData.consumptions.length === 0) return '-';
+    const best = Math.min(...userData.consumptions.map(c => c.count));
+    return best;
+  }
+
+  // Obtenir les données de la semaine
+  function getWeekData() {
+    const data = [0, 0, 0, 0, 0, 0, 0];
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayData = userData.consumptions.find(c => c.date === dateStr);
+      if (dayData) {
+        data[i] = dayData.count;
+      }
+    }
+
+    return { data };
+  }
+
+  // Vérifier le niveau
+  function checkLevel() {
+    const currentLevelData = levels.find(l => l.level === userData.level);
+    const nextLevel = levels.find(l => l.level === userData.level + 1);
+
+    if (nextLevel && userData.points >= nextLevel.pointsRequired) {
+      userData.level = nextLevel.level;
+      showNotification(`🎊 Niveau ${nextLevel.level} atteint : ${nextLevel.name} !`, 'success');
+      saveData();
+    }
+  }
+
+  // Toutes les autres fonctions d'affichage et de mise à jour doivent être déclarées ici
+  let evolutionChart, weekChart, goalChart;
+
+  // Fonction updateDisplay complète
+  function updateDisplay() {
+    // Stats du header
+    const totalPointsEl = document.getElementById('totalPoints');
+    const currentStreakEl = document.getElementById('currentStreak');
+    const moneySavedEl = document.getElementById('moneySaved');
+
+    if (totalPointsEl) totalPointsEl.textContent = userData.points + ' pts';
+    if (currentStreakEl) currentStreakEl.textContent = calculateStreak() + ' jours';
+    if (moneySavedEl) moneySavedEl.textContent = getMoneySaved() + '€';
+
+    // Stats rapides
+    updateQuickStats();
+
+    // Niveau
+    updateLevelDisplay();
+
+    // Cercle de progression
+    updateProgressCircle();
+
+    // Graphiques
+    if (evolutionChart) updateCharts();
+
+    // Timeline
+    updateTimeline();
+
+    // Défis
+    displayChallenges();
+
+    // Achievements
+    displayAchievements();
+
+    // Bénéfices santé
+    updateHealthBenefits();
+
+    // Citation
+    updateQuote();
+
+    // Projection
+    updateProjection();
+  }
+
+  // Mettre à jour les statistiques rapides
+  function updateQuickStats() {
+    const today = new Date().toISOString().split('T')[0];
+    const todayData = userData.consumptions.find(c => c.date === today);
+
+    const todayCountEl = document.getElementById('todayCount');
+    const weekAvgEl = document.getElementById('weekAvg');
+    const monthTotalEl = document.getElementById('monthTotal');
+    const reductionEl = document.getElementById('reduction');
+    const daysTrackedEl = document.getElementById('daysTracked');
+    const bestDayEl = document.getElementById('bestDay');
+
+    if (todayCountEl) todayCountEl.textContent = todayData ? todayData.count : '0';
+    if (weekAvgEl) weekAvgEl.textContent = getWeekAverage().toFixed(1);
+    if (monthTotalEl) monthTotalEl.textContent = getMonthTotal();
+    if (reductionEl) reductionEl.textContent = getReductionPercentage() + '%';
+    if (daysTrackedEl) daysTrackedEl.textContent = userData.consumptions.length;
+    if (bestDayEl) bestDayEl.textContent = getBestDay();
+  }
+
+  // Mettre à jour l'affichage du niveau
+  function updateLevelDisplay() {
+    const currentLevelData = levels.find(l => l.level === userData.level);
+    const nextLevel = levels.find(l => l.level === userData.level + 1);
+
+    const currentLevelEl = document.getElementById('currentLevel');
+    const levelNameEl = document.getElementById('levelName');
+    const levelBadgeEl = document.getElementById('levelBadge');
+    const levelProgressEl = document.getElementById('levelProgress');
+
+    if (currentLevelEl) currentLevelEl.textContent = userData.level;
+    if (levelNameEl) levelNameEl.textContent = currentLevelData.name;
+    if (levelBadgeEl) levelBadgeEl.textContent = currentLevelData.badge;
+
+    if (levelProgressEl && nextLevel) {
+      const progress = ((userData.points - currentLevelData.pointsRequired) /
+              (nextLevel.pointsRequired - currentLevelData.pointsRequired)) * 100;
+      levelProgressEl.style.width = Math.min(100, progress) + '%';
+    } else if (levelProgressEl) {
+      levelProgressEl.style.width = '100%';
+    }
+  }
+
+  // Mettre à jour le cercle de progression
+  function updateProgressCircle() {
+    const today = new Date().toISOString().split('T')[0];
+    const todayData = userData.consumptions.find(c => c.date === today);
+    const count = todayData ? todayData.count : 0;
+
+    const percent = userData.dailyGoal > 0 ?
+            Math.max(0, Math.round(((userData.dailyGoal - count) / userData.dailyGoal) * 100)) : 100;
+
+    const circle = document.getElementById('progressCircle');
+    const progressPercentEl = document.getElementById('progressPercent');
+
+    if (circle) {
+      const circumference = 2 * Math.PI * 60;
+      const offset = circumference - (percent / 100) * circumference;
+      circle.style.strokeDashoffset = offset;
+    }
+
+    if (progressPercentEl) {
+      progressPercentEl.textContent = percent + '%';
+    }
+
+    // Couleur selon le pourcentage
+    const gradient = document.getElementById('gradient');
+    if (gradient) {
+      if (percent >= 80) {
+        gradient.innerHTML = `
+                        <stop offset="0%" stop-color="#10b981"/>
+                        <stop offset="100%" stop-color="#059669"/>
+                    `;
+      } else if (percent >= 50) {
+        gradient.innerHTML = `
+                        <stop offset="0%" stop-color="#f59e0b"/>
+                        <stop offset="100%" stop-color="#d97706"/>
+                    `;
+      } else {
+        gradient.innerHTML = `
+                        <stop offset="0%" stop-color="#ef4444"/>
+                        <stop offset="100%" stop-color="#dc2626"/>
+                    `;
+      }
+    }
+  }
+
+  // Les autres fonctions suivent maintenant...
+  const count = parseInt(document.getElementById('cigaretteCount').value) || 0;
+  const date = document.getElementById('date').value;
+  const mood = document.getElementById('mood').value;
+  const note = document.getElementById('note').value;
+
+  if (count < 0 || count > 100) {
+    showNotification('Nombre invalide (0-100)', 'warning');
+    return;
+  }
+
+  if (!date) {
+    showNotification('Veuillez sélectionner une date', 'warning');
+    return;
+  }
+
+  // Vérifier si une entrée existe déjà
+  const existingIndex = userData.consumptions.findIndex(c => c.date === date);
+
+  if (existingIndex !== -1) {
+    // Mise à jour
+    userData.consumptions[existingIndex] = { date, count, mood, note };
+    showNotification('Journée mise à jour ✓', 'info');
+  } else {
+    // Nouvelle entrée
+    userData.consumptions.push({ date, count, mood, note });
+    userData.consumptions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Points pour l'enregistrement
+    userData.points += 5;
+    showNotification('Journée enregistrée ! +5 points', 'success');
+  }
+
+  // Calculer les bonus de réduction
+  if (userData.consumptions.length > 1) {
+    const sortedConsumptions = [...userData.consumptions].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const currentIndex = sortedConsumptions.findIndex(c => c.date === date);
+
+    if (currentIndex > 0) {
+      const previous = sortedConsumptions[currentIndex - 1];
+      if (count < previous.count) {
+        const reduction = previous.count - count;
+        const bonus = reduction * 10;
+        userData.points += bonus;
+        userData.totalCigarettesAvoided += reduction;
+        showNotification(`Réduction détectée ! -${reduction} cigarettes = +${bonus} points 🎉`, 'success');
+      }
+    }
+  }
+
+  // Si c'est la première entrée, définir la consommation initiale
+  if (userData.consumptions.length === 1) {
+    userData.initialConsumption = count;
+  }
+
+  // Vérifier le niveau
+  checkLevel();
+
+  // Sauvegarder et mettre à jour
+  saveData();
+  updateDisplay();
+  checkChallenges();
+  checkAchievements();
+
+  // Réinitialiser les champs
+  document.getElementById('cigaretteCount').value = '';
+  document.getElementById('note').value = '';
+  setTodayDate();
+  }
+
+  // Initialiser les graphiques
+  function initCharts() {
+    // Configuration commune
+    Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+    const ctx1 = document.getElementById('evolutionChart');
+    const ctx2 = document.getElementById('weekChart');
+    const ctx3 = document.getElementById('goalChart');
+
+    if (ctx1) {
+      evolutionChart = new Chart(ctx1.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Consommation',
+            data: [],
+            borderColor: '#667eea',
+            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            tension: 0.4,
+            fill: true,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }, {
+            label: 'Objectif',
+            data: [],
+            borderColor: '#ef4444',
+            borderDash: [5, 5],
+            backgroundColor: 'transparent',
+            tension: 0,
+            pointRadius: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: { display: true, position: 'bottom' },
+            tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.8)' }
+          },
+          scales: {
+            y: { beginAtZero: true },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    if (ctx2) {
+      weekChart = new Chart(ctx2.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
+          datasets: [{
+            label: 'Cette semaine',
+            data: [0, 0, 0, 0, 0, 0, 0],
+            backgroundColor: 'rgba(102, 126, 234, 0.6)',
+            borderColor: '#667eea',
+            borderWidth: 2,
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    if (ctx3) {
+      goalChart = new Chart(ctx3.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Cigarettes évitées', 'Cigarettes fumées', 'Objectif restant'],
+          datasets: [{
+            data: [0, 0, 100],
+            backgroundColor: [
+              'rgba(16, 185, 129, 0.7)',
+              'rgba(239, 68, 68, 0.7)',
+              'rgba(229, 231, 235, 0.7)'
+            ],
+            borderColor: ['#10b981', '#ef4444', '#e5e7eb'],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+    }
+  }
+
+  // Mettre à jour les graphiques
+  function updateCharts() {
+    if (!evolutionChart || !weekChart || !goalChart) return;
+
+    // Graphique d'évolution
+    const last30 = userData.consumptions.slice(-30);
+    evolutionChart.data.labels = last30.map(c => {
+      const date = new Date(c.date);
+      return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    });
+    evolutionChart.data.datasets[0].data = last30.map(c => c.count);
+    evolutionChart.data.datasets[1].data = new Array(last30.length).fill(userData.dailyGoal);
+    evolutionChart.update();
+
+    // Graphique hebdomadaire
+    const weekData = getWeekData();
+    weekChart.data.datasets[0].data = weekData.data;
+    weekChart.update();
+
+    // Graphique des objectifs
+    const total = userData.consumptions.reduce((acc, c) => acc + c.count, 0);
+    const avoided = userData.totalCigarettesAvoided;
+    const goalRemaining = Math.max(0, (userData.dailyGoal * 30) - total);
+    goalChart.data.datasets[0].data = [avoided, total, goalRemaining];
+    goalChart.update();
+  }
+
+  // Mettre à jour la timeline
+  function updateTimeline() {
+    const timeline = document.getElementById('timeline');
+    if (!timeline) return;
+
+    timeline.innerHTML = '';
+    const last30 = userData.consumptions.slice(-30);
+
+    last30.forEach(c => {
+      const div = document.createElement('div');
+      div.className = 'timeline-day';
+
+      if (c.count === 0) {
+        div.classList.add('zero');
+      } else if (c.count <= userData.dailyGoal * 0.5) {
+        div.classList.add('low');
+      } else if (c.count <= userData.dailyGoal) {
+        div.classList.add('medium');
+      } else {
+        div.classList.add('high');
+      }
+
+      div.textContent = c.count;
+      const date = new Date(c.date);
+      div.title = `${date.toLocaleDateString('fr-FR')} : ${c.count} cigarettes ${c.mood || ''}`;
+      timeline.appendChild(div);
+    });
+  }
+
+  // Afficher les défis
+  function displayChallenges() {
+    const list = document.getElementById('challengesList');
+    if (!list) return;
+
+    list.innerHTML = '';
+    updateChallengeProgress();
+
+    challenges.forEach(challenge => {
+      const completed = userData.challenges.includes(challenge.id);
+      const div = document.createElement('div');
+      div.className = `challenge-item ${completed ? 'completed' : ''}`;
+
+      const progressPercent = challenge.target > 0 ?
+              Math.min(100, Math.round((challenge.progress / challenge.target) * 100)) : 0;
+
+      div.innerHTML = `
+                    <div class="challenge-info">
+                        <div class="challenge-name">
+                            <span>${challenge.icon}</span>
+                            <span>${challenge.name}</span>
+                        </div>
+                        <div class="challenge-desc">${challenge.desc}</div>
+                        ${!completed ? `
+                            <div class="challenge-progress">
+                                <div class="challenge-progress-bar" style="width: ${progressPercent}%"></div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="challenge-points">+${challenge.points}</div>
+                `;
+
+      if (!completed) {
+        div.onclick = () => checkSingleChallenge(challenge);
+      }
+
+      list.appendChild(div);
+    });
+  }
+
+  // Mettre à jour la progression des défis
+  function updateChallengeProgress() {
+    challenges.forEach(challenge => {
+      if (userData.challenges.includes(challenge.id)) return;
+
+      switch(challenge.type) {
+        case 'single':
+        case 'tracking':
+          challenge.progress = userData.consumptions.length;
+          break;
+        case 'streak':
+          challenge.progress = calculateStreak();
+          break;
+        case 'savings':
+          challenge.progress = getMoneySaved();
+          break;
+        case 'marathon':
+          challenge.progress = userData.consumptions.length;
+          break;
+        case 'limit':
+          const under5 = userData.consumptions.filter(c => c.count <= 5).length;
+          challenge.progress = Math.min(under5, challenge.target);
+          break;
+        case 'zero':
+          const zeros = userData.consumptions.filter(c => c.count === 0).length;
+          challenge.progress = zeros;
+          break;
+        default:
+          challenge.progress = 0;
+      }
+    });
+  }
+
+  // Vérifier les défis
+  function checkChallenges() {
+    challenges.forEach(challenge => {
+      checkSingleChallenge(challenge);
+    });
+  }
+
+  // Vérifier un défi spécifique
+  function checkSingleChallenge(challenge) {
+    if (userData.challenges.includes(challenge.id)) return;
+
+    let completed = false;
+
+    switch(challenge.type) {
+      case 'single':
+        completed = userData.consumptions.length >= challenge.target;
+        break;
+      case 'tracking':
+        completed = userData.consumptions.length >= challenge.target;
+        break;
+      case 'streak':
+        completed = calculateStreak() >= challenge.target;
+        break;
+      case 'limit':
+        const recentUnder5 = userData.consumptions.slice(-challenge.target)
+                .filter(c => c.count <= 5).length;
+        completed = recentUnder5 >= challenge.target;
+        break;
+      case 'zero':
+        const hasZero = userData.consumptions.some(c => c.count === 0);
+        completed = hasZero;
+        break;
+      case 'savings':
+        completed = getMoneySaved() >= challenge.target;
+        break;
+      case 'marathon':
+        completed = userData.consumptions.length >= challenge.target;
+        break;
+    }
+
+    if (completed) {
+      userData.challenges.push(challenge.id);
+      userData.points += challenge.points;
+      showNotification(`🎊 Défi "${challenge.name}" complété ! +${challenge.points} points`, 'success');
+      checkLevel();
+      saveData();
+      updateDisplay();
+    }
+  }
+
+  // Afficher les achievements
+  function displayAchievements() {
+    const list = document.getElementById('achievementList');
+    if (!list) return;
+
+    list.innerHTML = '';
+
+    achievements.forEach(achievement => {
+      const unlocked = achievement.condition();
+      const wasUnlocked = userData.achievements.includes(achievement.id);
+
+      const div = document.createElement('div');
+      div.className = `achievement ${unlocked ? 'unlocked' : ''}`;
+      div.innerHTML = `
+                    ${achievement.icon}
+                    <div class="tooltip">${achievement.name}</div>
+                `;
+      list.appendChild(div);
+
+      if (unlocked && !wasUnlocked) {
+        userData.achievements.push(achievement.id);
+        userData.points += 50;
+        showNotification(`🏆 Achievement débloqué : ${achievement.name} ! +50 points`, 'success');
+        saveData();
+      }
+    });
+  }
+
+  // Vérifier les achievements
+  function checkAchievements() {
+    displayAchievements();
+  }
+
+  // Mettre à jour les bénéfices santé
+  function updateHealthBenefits() {
+    const list = document.getElementById('healthBenefits');
+    if (!list) return;
+
+    list.innerHTML = '';
+    let hoursSinceLastCig = 0;
+
+    if (userData.consumptions.length > 0) {
+      const lastZero = [...userData.consumptions].reverse().find(c => c.count === 0);
+      if (lastZero) {
+        const lastZeroDate = new Date(lastZero.date);
+        hoursSinceLastCig = (new Date() - lastZeroDate) / (1000 * 60 * 60);
+      } else {
+        const reduction = getReductionPercentage();
+        hoursSinceLastCig = reduction * 2;
+      }
+    }
+
+    healthBenefits.forEach(benefit => {
+      const unlocked = hoursSinceLastCig >= benefit.hours;
+      const div = document.createElement('div');
+      div.className = `benefit-item ${unlocked ? 'unlocked' : ''}`;
+      div.innerHTML = `
+                    <span class="benefit-icon">${benefit.icon}</span>
+                    <div class="benefit-content">
+                        <div class="benefit-title">${benefit.title}</div>
+                        <div class="benefit-desc">${benefit.desc}</div>
+                    </div>
+                `;
+      list.appendChild(div);
+    });
+  }
+
+  // Mettre à jour la citation
+  function updateQuote() {
+    const quoteEl = document.getElementById('motivationalQuote');
+    if (quoteEl) {
+      const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+      quoteEl.textContent = randomQuote;
+    }
+  }
+
+  // Mettre à jour la projection
+  function updateProjection() {
+    const projectionEl = document.getElementById('projectionDays');
+    if (!projectionEl) return;
+
+    if (userData.consumptions.length < 7) {
+      projectionEl.textContent = '∞';
+      return;
+    }
+
+    const weekAvg = getWeekAverage();
+    const reduction = getReductionPercentage();
+
+    if (reduction <= 0 || weekAvg === 0) {
+      projectionEl.textContent = '∞';
+      return;
+    }
+
+    const dailyReduction = (userData.initialConsumption - weekAvg) / userData.consumptions.length;
+
+    if (dailyReduction <= 0) {
+      projectionEl.textContent = '∞';
+      return;
+    }
+
+    const daysToZero = Math.ceil(weekAvg / dailyReduction);
+    projectionEl.textContent = daysToZero;
+  }
+
+  // Fonctions pour les boutons
+  function updateGoal() {
+    userData.dailyGoal = parseInt(document.getElementById('dailyGoal').value) || 10;
+    saveData();
+    updateDisplay();
+    showNotification('Objectif mis à jour ✓', 'success');
+  }
+
+  function updatePrice() {
+    userData.pricePerPack = parseFloat(document.getElementById('pricePerPack').value) || 10;
+    saveData();
+    updateDisplay();
+    showNotification('Prix mis à jour ✓', 'success');
+  }
+
+  function updateStrategy() {
+    userData.strategy = document.getElementById('reductionStrategy').value;
+    saveData();
+    showNotification('Stratégie mise à jour ✓', 'success');
+
+    if (userData.consumptions.length > 0) {
+      const weekAvg = getWeekAverage();
+
+      switch(userData.strategy) {
+        case 'progressive':
+          userData.dailyGoal = Math.floor(weekAvg * 0.9);
+          break;
+        case 'paliers':
+          userData.dailyGoal = Math.floor(weekAvg - 2);
+          break;
+        case 'radical':
+          userData.dailyGoal = Math.floor(weekAvg * 0.5);
+          break;
+      }
+
+      document.getElementById('dailyGoal').value = userData.dailyGoal;
+      saveData();
+      updateDisplay();
+    }
+  }
+
+  function exportData() {
+    const dataStr = JSON.stringify(userData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `stopclope-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification('Données exportées ✓', 'success');
+  }
+
+  function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const imported = JSON.parse(e.target.result);
+        userData = { ...userData, ...imported };
+        saveData();
+        location.reload();
+      } catch (error) {
+        showNotification('Erreur lors de l\'import', 'danger');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function confirmReset() {
+    if (confirm('⚠️ Effacer toutes les données ?\n\nCette action est irréversible !')) {
+      if (confirm('Vraiment sûr ? Toute votre progression sera perdue.')) {
+        localStorage.removeItem('stopClopeProData');
+        location.reload();
+      }
+    }
+  }
+
+  // Fonctions modal
+  function showModal(title, content) {
+    const modalEl = document.getElementById('modal');
+    const titleEl = document.getElementById('modalTitle');
+    const contentEl = document.getElementById('modalContent');
+
+    if (modalEl && titleEl && contentEl) {
+      titleEl.textContent = title;
+      contentEl.innerHTML = content;
+      modalEl.style.display = 'flex';
+    }
+  }
+
+  function closeModal() {
+    const modalEl = document.getElementById('modal');
+    if (modalEl) {
+      modalEl.style.display = 'none';
+    }
+  }
+
+  function showPointsDetails() {
+    const content = `
+                <div style="line-height: 1.8;">
+                    <p><strong>Total : ${userData.points} points</strong></p>
+                    <hr style="margin: 15px 0;">
+                    <p>📝 Enregistrements : ${userData.consumptions.length * 5} pts</p>
+                    <p>📉 Réductions : ${userData.totalCigarettesAvoided * 10} pts</p>
+                    <p>🎯 Défis : ${userData.challenges.length} complétés</p>
+                    <p>🏆 Achievements : ${userData.achievements.length * 50} pts</p>
+                </div>
+            `;
+    showModal('📊 Détails des points', content);
+  }
+
+  function showStreakDetails() {
+    const current = calculateStreak();
+    const content = `
+                <div style="line-height: 1.8;">
+                    <p><strong>🔥 Streak actuel : ${current} jours</strong></p>
+                    <p>🏆 Meilleur streak : ${userData.bestStreak} jours</p>
+                    <hr style="margin: 15px 0;">
+                    <p style="color: #666;">Le streak compte les jours consécutifs de réduction.</p>
+                </div>
+            `;
+    showModal('🔥 Détails du streak', content);
+  }
+
+  function showSavingsDetails() {
+    const saved = getMoneySaved();
+    const content = `
+                <div style="line-height: 1.8;">
+                    <p><strong>💰 Total économisé : ${saved}€</strong></p>
+                    <hr style="margin: 15px 0;">
+                    <p>📦 Prix/paquet : ${userData.pricePerPack}€</p>
+                    <p>🚬 Cigarettes évitées : ${userData.totalCigarettesAvoided}</p>
+                </div>
+            `;
+    showModal('💰 Détails des économies', content);
+  }
+
+  function showTodayDetails() {
+    const today = new Date().toISOString().split('T')[0];
+    const todayData = userData.consumptions.find(c => c.date === today);
+
+    let content = '<div style="line-height: 1.8;">';
+    if (todayData) {
+      content += `
+                    <p><strong>📅 Aujourd'hui</strong></p>
+                    <hr style="margin: 15px 0;">
+                    <p>🚬 Cigarettes : ${todayData.count}</p>
+                    <p>🎯 Objectif : ${userData.dailyGoal}</p>
+                    <p>😊 Humeur : ${todayData.mood || 'Non renseignée'}</p>
+                `;
+    } else {
+      content += '<p>Aucune donnée pour aujourd\'hui.</p>';
+    }
+    content += '</div>';
+    showModal('📊 Aujourd\'hui', content);
+  }
+
+  // Initialisation
+  function init() {
+    loadData();
+    initCharts();
+    updateDisplay();
+    setTodayDate();
+
+    // Mise à jour automatique
+    setInterval(updateDisplay, 60000);
+  }
+
+  // Fermer le modal en cliquant à l'extérieur
+  window.onclick = function(event) {
+    const modal = document.getElementById('modal');
+    if (event.target === modal) {
+      closeModal();
+    }
+  }
+
+  // Démarrage
+  function init() {
+    loadData();
+    initCharts();
+    updateDisplay();
+    setTodayDate();
+
+    // Mise à jour automatique toutes les minutes
+    setInterval(updateDisplay, 60000);
+  }
+
+  // Définir la date du jour
+  function setTodayDate() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date').value = today;
+    document.getElementById('date').max = today;
+  }
+
+  // Charger les données
+  function loadData() {
+    try {
+      const saved = localStorage.getItem('stopClopeProData');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        userData = { ...userData, ...parsed };
+        console.log('Données chargées avec succès');
+      } else {
+        // Première utilisation
+        showNotification('Bienvenue dans StopClope Pro ! 🎉', 'success');
+        saveData();
+      }
+    } catch (error) {
+      console.error('Erreur de chargement:', error);
+      showNotification('Erreur lors du chargement des données', 'danger');
+    }
+
+    // Mettre à jour les champs
+    document.getElementById('dailyGoal').value = userData.dailyGoal;
+    document.getElementById('pricePerPack').value = userData.pricePerPack;
+    document.getElementById('reductionStrategy').value = userData.strategy;
+  }
+
+  // Sauvegarder les données
+  function saveData() {
+    try {
+      userData.lastLogin = new Date().toISOString();
+      localStorage.setItem('stopClopeProData', JSON.stringify(userData));
+      console.log('Données sauvegardées');
+    } catch (error) {
+      console.error('Erreur de sauvegarde:', error);
+      if (error.name === 'QuotaExceededError') {
+        showNotification('Espace de stockage insuffisant', 'danger');
+      }
+    }
+  }
+
+  // Initialiser les graphiques
+  function initCharts() {
+    // Configuration commune
+    Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+    // Graphique d'évolution
+    const ctx1 = document.getElementById('evolutionChart').getContext('2d');
+    evolutionChart = new Chart(ctx1, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Consommation',
+          data: [],
+          borderColor: '#667eea',
+          backgroundColor: 'rgba(102, 126, 234, 0.1)',
+          tension: 0.4,
+          fill: true,
+          pointRadius: 4,
+          pointHoverRadius: 6
+        }, {
+          label: 'Objectif',
+          data: [],
+          borderColor: '#ef4444',
+          borderDash: [5, 5],
+          backgroundColor: 'transparent',
+          tension: 0,
+          pointRadius: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          intersect: false,
+          mode: 'index'
+        },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+            labels: {
+              padding: 15,
+              usePointStyle: true
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            padding: 12,
+            cornerRadius: 8
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: 'rgba(0, 0, 0, 0.05)'
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            }
+          }
+        }
+      }
+    });
+
+    // Graphique hebdomadaire
+    const ctx2 = document.getElementById('weekChart').getContext('2d');
+    weekChart = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
+        datasets: [{
+          label: 'Cette semaine',
+          data: [0, 0, 0, 0, 0, 0, 0],
+          backgroundColor: [
+            'rgba(102, 126, 234, 0.6)',
+            'rgba(118, 75, 162, 0.6)',
+            'rgba(102, 126, 234, 0.6)',
+            'rgba(118, 75, 162, 0.6)',
+            'rgba(102, 126, 234, 0.6)',
+            'rgba(245, 158, 11, 0.6)',
+            'rgba(239, 68, 68, 0.6)'
+          ],
+          borderColor: [
+            '#667eea',
+            '#764ba2',
+            '#667eea',
+            '#764ba2',
+            '#667eea',
+            '#f59e0b',
+            '#ef4444'
+          ],
+          borderWidth: 2,
+          borderRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            padding: 12,
+            cornerRadius: 8
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: 'rgba(0, 0, 0, 0.05)'
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            }
+          }
+        }
+      }
+    });
+
+    // Graphique des objectifs
+    const ctx3 = document.getElementById('goalChart').getContext('2d');
+    goalChart = new Chart(ctx3, {
+      type: 'doughnut',
+      data: {
+        labels: ['Cigarettes évitées', 'Cigarettes fumées', 'Objectif restant'],
+        datasets: [{
+          data: [0, 0, 100],
+          backgroundColor: [
+            'rgba(16, 185, 129, 0.7)',
+            'rgba(239, 68, 68, 0.7)',
+            'rgba(229, 231, 235, 0.7)'
+          ],
+          borderColor: [
+            '#10b981',
+            '#ef4444',
+            '#e5e7eb'
+          ],
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              padding: 15,
+              usePointStyle: true
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            padding: 12,
+            cornerRadius: 8
+          }
+        }
+      }
+    });
+  }
+
+  // Ajouter une consommation
+  function addConsumption() {
+    const count = parseInt(document.getElementById('cigaretteCount').value) || 0;
+    const date = document.getElementById('date').value;
+    const mood = document.getElementById('mood').value;
+    const note = document.getElementById('note').value;
+
+    if (count < 0 || count > 100) {
+      showNotification('Nombre invalide (0-100)', 'warning');
+      return;
+    }
+
+    if (!date) {
+      showNotification('Veuillez sélectionner une date', 'warning');
+      return;
+    }
+
+    // Vérifier si une entrée existe déjà
+    const existingIndex = userData.consumptions.findIndex(c => c.date === date);
+
+    if (existingIndex !== -1) {
+      // Mise à jour
+      userData.consumptions[existingIndex] = { date, count, mood, note };
+      showNotification('Journée mise à jour ✓', 'info');
+    } else {
+      // Nouvelle entrée
+      userData.consumptions.push({ date, count, mood, note });
+      userData.consumptions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      // Points pour l'enregistrement
+      userData.points += 5;
+      showNotification('Journée enregistrée ! +5 points', 'success');
+    }
+
+    // Calculer les bonus de réduction
+    if (userData.consumptions.length > 1) {
+      const sortedConsumptions = [...userData.consumptions].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const currentIndex = sortedConsumptions.findIndex(c => c.date === date);
+
+      if (currentIndex > 0) {
+        const previous = sortedConsumptions[currentIndex - 1];
+        if (count < previous.count) {
+          const reduction = previous.count - count;
+          const bonus = reduction * 10;
+          userData.points += bonus;
+          userData.totalCigarettesAvoided += reduction;
+          showNotification(`Réduction détectée ! -${reduction} cigarettes = +${bonus} points 🎉`, 'success');
+        }
+      }
+    }
+
+    // Si c'est la première entrée, définir la consommation initiale
+    if (userData.consumptions.length === 1) {
+      userData.initialConsumption = count;
+    }
+
+    // Vérifier le niveau
+    checkLevel();
+
+    // Sauvegarder et mettre à jour
+    saveData();
+    updateDisplay();
+    checkChallenges();
+    checkAchievements();
+
+    // Réinitialiser les champs
+    document.getElementById('cigaretteCount').value = '';
+    document.getElementById('note').value = '';
+    setTodayDate();
+  }
+
+  // Démarrage
+  document.addEventListener('DOMContentLoaded', init);
+</script>
+
+// Mettre à jour l'affichage principal
+function updateDisplay() {
+// Stats du header
+document.getElementById('totalPoints').textContent = userData.points + ' pts';
+document.getElementById('currentStreak').textContent = calculateStreak() + ' jours';
+document.getElementById('moneySaved').textContent = getMoneySaved() + '€';
+
+// Stats rapides
+updateQuickStats();
+
+// Niveau
+updateLevelDisplay();
+
+// Cercle de progression
+updateProgressCircle();
+
+// Graphiques
+updateCharts();
+
+// Timeline
+updateTimeline();
+
+// Défis
+displayChallenges();
+
+// Achievements
+displayAchievements();
+
+// Bénéfices santé
+updateHealthBenefits();
+
+// Citation
+updateQuote();
+
+// Projection
+updateProjection();
+}
+
+// Mettre à jour les statistiques rapides
+function updateQuickStats() {
+const today = new Date().toISOString().split('T')[0];
+const todayData = userData.consumptions.find(c => c.date === today);
+
+document.getElementById('todayCount').textContent = todayData ? todayData.count : '0';
+document.getElementById('weekAvg').textContent = getWeekAverage().toFixed(1);
+document.getElementById('monthTotal').textContent = getMonthTotal();
+document.getElementById('reduction').textContent = getReductionPercentage() + '%';
+document.getElementById('daysTracked').textContent = userData.consumptions.length;
+document.getElementById('bestDay').textContent = getBestDay();
+}
+
+// Mettre à jour l'affichage du niveau
+function updateLevelDisplay() {
+const currentLevelData = levels.find(l => l.level === userData.level);
+const nextLevel = levels.find(l => l.level === userData.level + 1);
+
+document.getElementById('currentLevel').textContent = userData.level;
+document.getElementById('levelName').textContent = currentLevelData.name;
+document.getElementById('levelBadge').textContent = currentLevelData.badge;
+
+if (nextLevel) {
+const progress = ((userData.points - currentLevelData.pointsRequired) /
+(nextLevel.pointsRequired - currentLevelData.pointsRequired)) * 100;
+document.getElementById('levelProgress').style.width = Math.min(100, progress) + '%';
+} else {
+document.getElementById('levelProgress').style.width = '100%';
+}
+}
+
+// Calculer le streak
+function calculateStreak() {
+if (userData.consumptions.length < 2) return 0;
+
+let streak = 0;
+const sorted = [...userData.consumptions].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+for (let i = 0; i < sorted.length - 1; i++) {
+if (sorted[i].count < sorted[i + 1].count) {
+streak++;
+} else {
+break;
+}
+}
+
+if (streak > userData.bestStreak) {
+userData.bestStreak = streak;
+saveData();
+}
+
+return streak;
+}
+
+// Calculer l'argent économisé
+function getMoneySaved() {
+const pricePerCig = userData.pricePerPack / 20;
+return Math.round(userData.totalCigarettesAvoided * pricePerCig);
+}
+
+// Moyenne hebdomadaire
+function getWeekAverage() {
+const lastWeek = userData.consumptions.slice(-7);
+if (lastWeek.length === 0) return 0;
+const sum = lastWeek.reduce((acc, c) => acc + c.count, 0);
+return sum / lastWeek.length;
+}
+
+// Total mensuel
+function getMonthTotal() {
+const now = new Date();
+const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+const monthData = userData.consumptions.filter(c => c.date >= monthStart);
+return monthData.reduce((acc, c) => acc + c.count, 0);
+}
+
+// Pourcentage de réduction
+function getReductionPercentage() {
+if (userData.consumptions.length < 2) return 0;
+const initial = userData.initialConsumption || userData.consumptions[0].count;
+const recent = userData.consumptions.slice(-7);
+if (recent.length === 0) return 0;
+const recentAvg = recent.reduce((acc, c) => acc + c.count, 0) / recent.length;
+if (initial === 0) return 0;
+return Math.max(0, Math.round(((initial - recentAvg) / initial) * 100));
+}
+
+// Meilleur jour
+function getBestDay() {
+if (userData.consumptions.length === 0) return '-';
+const best = Math.min(...userData.consumptions.map(c => c.count));
+return best;
+}
+
+// Mettre à jour le cercle de progression
+function updateProgressCircle() {
+const today = new Date().toISOString().split('T')[0];
+const todayData = userData.consumptions.find(c => c.date === today);
+const count = todayData ? todayData.count : 0;
+
+const percent = userData.dailyGoal > 0 ?
+Math.max(0, Math.round(((userData.dailyGoal - count) / userData.dailyGoal) * 100)) : 100;
+
+const circle = document.getElementById('progressCircle');
+const circumference = 2 * Math.PI * 60;
+const offset = circumference - (percent / 100) * circumference;
+
+circle.style.strokeDashoffset = offset;
+document.getElementById('progressPercent').textContent = percent + '%';
+
+// Couleur selon le pourcentage
+const gradient = document.getElementById('gradient');
+if (percent >= 80) {
+gradient.innerHTML = `
+<stop offset="0%" stop-color="#10b981"/>
+<stop offset="100%" stop-color="#059669"/>
+`;
+} else if (percent >= 50) {
+gradient.innerHTML = `
+<stop offset="0%" stop-color="#f59e0b"/>
+<stop offset="100%" stop-color="#d97706"/>
+`;
+} else {
+gradient.innerHTML = `
+<stop offset="0%" stop-color="#ef4444"/>
+<stop offset="100%" stop-color="#dc2626"/>
+`;
+}
+}
+
+// Mettre à jour les graphiques
+function updateCharts() {
+// Graphique d'évolution (30 derniers jours)
+const last30 = userData.consumptions.slice(-30);
+
+evolutionChart.data.labels = last30.map(c => {
+const date = new Date(c.date);
+return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+});
+
+evolutionChart.data.datasets[0].data = last30.map(c => c.count);
+evolutionChart.data.datasets[1].data = new Array(last30.length).fill(userData.dailyGoal);
+evolutionChart.update();
+
+// Graphique hebdomadaire
+const weekData = getWeekData();
+weekChart.data.datasets[0].data = weekData.data;
+
+// Couleurs selon les valeurs
+weekChart.data.datasets[0].backgroundColor = weekData.data.map(val => {
+if (val === 0) return 'rgba(139, 92, 246, 0.6)';
+if (val <= userData.dailyGoal * 0.5) return 'rgba(16, 185, 129, 0.6)';
+if (val <= userData.dailyGoal) return 'rgba(245, 158, 11, 0.6)';
+return 'rgba(239, 68, 68, 0.6)';
+});
+
+weekChart.update();
+
+// Mettre à jour les stats de la semaine
+const validData = weekData.data.filter(d => d > 0);
+if (validData.length > 0) {
+const bestIdx = weekData.data.indexOf(Math.min(...validData));
+const worstIdx = weekData.data.indexOf(Math.max(...validData));
+document.getElementById('bestDayWeek').textContent = weekChart.data.labels[bestIdx];
+document.getElementById('worstDayWeek').textContent = weekChart.data.labels[worstIdx];
+}
+
+// Graphique des objectifs
+const total = userData.consumptions.reduce((acc, c) => acc + c.count, 0);
+const avoided = userData.totalCigarettesAvoided;
+const goalRemaining = Math.max(0, (userData.dailyGoal * 30) - total);
+
+goalChart.data.datasets[0].data = [avoided, total, goalRemaining];
+goalChart.update();
